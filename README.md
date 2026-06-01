@@ -67,3 +67,24 @@ python examples/guiding_example.py
 ```bash
 uv run examples/dual_arm_unload.py --planner scs --seed 3
 ```
+
+## Tests
+
+The suite has two parts, mirroring CI.
+
+**Python tests** (planners, collision wrapper, examples). Install the test
+extras and run `pytest`:
+
+```bash
+pip install -e '.[test]'
+pytest -q
+```
+
+**Native C++ tests** (the Bezier collision kernel, via gtest/ctest). Configure
+a test build, compile it, and run `ctest`:
+
+```bash
+cmake -S . -B build-cpp -DPYBMT_BUILD_TESTS=ON -DPYBMT_BUILD_PYTHON=OFF -DCMAKE_BUILD_TYPE=Release
+cmake --build build-cpp --parallel
+ctest --test-dir build-cpp --output-on-failure
+```
