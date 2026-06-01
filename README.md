@@ -13,8 +13,8 @@ acceleration limits while avoiding convex obstacles. It ships three planners:
 - **`SCSPlanner`** — the sequential-convex-shrinking variant using exact convex
   obstacle separation.
 
-The Bezier collision kernel is a small vendored C++ extension (Eigen + OpenMP),
-so no GPU stack is required.
+The Bezier collision check is a small C++ extension built on Eigen, with
+optional OpenMP parallelism.
 
 ## Install
 
