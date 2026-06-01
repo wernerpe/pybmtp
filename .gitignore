@@ -30,3 +30,7 @@ cmake_install.cmake
 .idea/
 .DS_Store
 .playwright-mcp/
+
+# Test / example render outputs (inspect locally, never commit)
+test_outputs/
+examples/_out/
