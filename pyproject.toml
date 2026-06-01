@@ -1,0 +1,61 @@
+[build-system]
+requires = ["scikit-build-core>=0.9", "pybind11>=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pybmt"
+version = "0.1.0"
+description = "Biconvex minimum-time trajectory planning with Bezier curves."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Peter Werner", email = "wernrpe@gmail.com" }]
+keywords = ["trajectory optimization", "motion planning", "bezier", "minimum time"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C++",
+    "Topic :: Scientific/Engineering",
+]
+
+# Hard dependencies. drake provides the `pydrake` symbolic + optimization stack;
+# pybezier lets us build Bezier curves over Drake decision variables (symbolic
+# round-tripping); scsplanning supplies the SCS variant's exact-separation core.
+dependencies = [
+    "numpy>=1.23",
+    "scipy>=1.9",
+    "drake>=1.35",
+    "pybezier>=0.1.4",
+    "scsplanning>=0.1",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://github.com/wernerpe/BCPlanning"
+Repository = "https://github.com/wernerpe/BCPlanning"
+
+# ---------------------------------------------------------------------------
+# scikit-build-core: drives the CMake build of the pybind11 extension.
+# ---------------------------------------------------------------------------
+[tool.scikit-build]
+minimum-version = "0.9"
+build-dir = "build/{wheel_tag}"
+wheel.packages = ["src/pybmt"]
+# Only the Python extension is built for a wheel; the gtest target stays off.
+cmake.args = ["-DPYBMT_BUILD_PYTHON=ON", "-DPYBMT_BUILD_TESTS=OFF"]
+
+[tool.scikit-build.cmake.define]
+CMAKE_BUILD_TYPE = "Release"
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+# numpy emits RuntimeWarnings when it evaluates object-dtype arrays of Drake
+# symbolic expressions (the readable symbolic constraint path). They are
+# harmless; silence them so real warnings stand out.
+filterwarnings = [
+    "ignore:invalid value encountered:RuntimeWarning",
+]
