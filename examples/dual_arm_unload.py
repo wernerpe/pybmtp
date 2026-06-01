@@ -30,6 +30,7 @@ Assumption-1 splitting planes between non-adjacent convex regions).
 from __future__ import annotations
 
 import argparse
+import pathlib
 import time
 
 import numpy as np
@@ -180,6 +181,45 @@ def make_waypoints(red_start, red_goal, blue_start, blue_goal, lift_h):
     return np.array(rows)
 
 
+# --- seed vs. optimized plot ----------------------------------------------
+
+def plot_trajectory(path_out, waypoints, trajectory, planner):
+    """3D plot of each arm's brick-center path: dashed waypoint seed vs. the
+    solid optimized trajectory (red arm in dims 0:3, blue arm in dims 3:6)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers 3d proj)
+
+    ts = np.linspace(trajectory.initial_time, trajectory.final_time, 400)
+    traj = np.array([np.asarray(trajectory(t)).reshape(-1) for t in ts])
+
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection="3d")
+    for slot, name, col in [(slice(0, 3), "red", "tab:red"),
+                            (slice(3, 6), "blue", "tab:blue")]:
+        wp = waypoints[:, slot]
+        ax.plot(wp[:, 0], wp[:, 1], wp[:, 2], color=col, linestyle="--",
+                marker="o", markersize=4, alpha=0.6,
+                label=f"{name} waypoints")
+        tr = traj[:, slot]
+        ax.plot(tr[:, 0], tr[:, 1], tr[:, 2], color=col, linewidth=2.5,
+                label=f"{name} optimized")
+        ax.scatter(*wp[0], color=col, s=80, marker="o")
+        ax.scatter(*wp[-1], color=col, s=160, marker="*", edgecolor="k")
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")
+    ax.set_title(f"Dual-arm unload ({planner.upper()}): "
+                 f"waypoints vs. optimized  "
+                 f"(T={trajectory.final_time - trajectory.initial_time:.2f}s)")
+    ax.legend(loc="upper left")
+    fig.tight_layout()
+    fig.savefig(path_out, dpi=130)
+    plt.close(fig)
+
+
 # --- meshcat animation ----------------------------------------------------
 
 def animate(meshcat, trajectory, red, blue, stationary_bricks, gripper_offsets,
@@ -273,6 +313,12 @@ def main(seed=0, planner="bcp"):
 
     hits = intersect_with_hpolyhedra(res.trajectory, obstacles, tol=1e-3)
     print(f"collision-free: {hits == {}}")
+
+    out_dir = pathlib.Path(__file__).resolve().parent / "_out"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / f"dual_arm_unload_{planner}.png"
+    plot_trajectory(out, waypoints, res.trajectory, planner)
+    print(f"wrote {out}")
 
     stationary_bricks = [b for b in all_bricks if b is not red and b is not blue]
     meshcat = pd.StartMeshcat()

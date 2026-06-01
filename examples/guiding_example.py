@@ -12,23 +12,21 @@ path routes around them. A minimum-time planner refines that seed into a
 minimum-time trajectory (velocity ball v_max=10, acceleration ball a_max=30)
 that stays clear of the obstacles.
 
-Two planners are available via ``--planner``:
+It solves the scene with both planners and overlays them on one figure:
 
-  * ``bcp`` (default) — the biconvex ``MinimumTimePlanner``.
+  * ``bcp`` — the biconvex ``MinimumTimePlanner``.
   * ``scs`` — the ``SCSPlanner`` baseline (convex regions + scsplanning, with
     Assumption-1 splitting planes added between non-adjacent regions).
 
-Run it (renders to ``examples/_out/guiding_example_<planner>.png``):
+Run it (renders to ``examples/_out/guiding_example.png``):
 
-    uv run examples/guiding_example.py            # BCP
-    uv run examples/guiding_example.py --planner scs
+    uv run examples/guiding_example.py
     # or, in an environment where pybmt is already installed:
     python examples/guiding_example.py
 """
 
 from __future__ import annotations
 
-import argparse
 import pathlib
 
 import numpy as np
@@ -68,8 +66,8 @@ def build_scene():
     return domain, obstacles, obstacle_boxes, waypoints, vel_set, acc_set
 
 
-def render(path_out, obstacle_boxes, waypoints, seed_curve, opt_curve, title,
-           traj_label):
+def render(path_out, obstacle_boxes, waypoints, seed_curve, opt_curves, title):
+    """``opt_curves`` is a list of ``(label, curve, color)`` to overlay."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.patches as mpatches
@@ -91,10 +89,12 @@ def render(path_out, obstacle_boxes, waypoints, seed_curve, opt_curve, title,
             linestyle="--", label="seed path", zorder=8)
     ax.scatter(waypoints[:, 0], waypoints[:, 1], color="k", s=40, zorder=9)
 
-    opt = np.array([opt_curve(t) for t in np.linspace(
-        opt_curve.initial_time, opt_curve.final_time, 400)])
-    ax.plot(opt[:, 0], opt[:, 1], color="red", linewidth=2.5,
-            label=traj_label, zorder=10)
+    for label, curve, color in opt_curves:
+        opt = np.array([curve(t) for t in np.linspace(
+            curve.initial_time, curve.final_time, 400)])
+        ax.plot(opt[:, 0], opt[:, 1], color=color, linewidth=2.5,
+                label=label, zorder=10)
+
     ax.scatter([waypoints[0, 0]], [waypoints[0, 1]], color="k", s=160, zorder=11)
     ax.scatter([waypoints[-1, 0]], [waypoints[-1, 1]], marker="*",
                color="gold", edgecolor="k", s=420, zorder=11)
@@ -106,46 +106,37 @@ def render(path_out, obstacle_boxes, waypoints, seed_curve, opt_curve, title,
     plt.close(fig)
 
 
-def main(planner="bcp"):
+def main():
     domain, obstacles, obstacle_boxes, waypoints, vel_set, acc_set = build_scene()
 
     # A constraint-feasible polygonal warm start, drawn as the dashed seed path.
     seed_curve = PolygonalInitializer(
         vel_set, acc_set, force_same_segment_time=True).initialize(waypoints)
 
-    if planner == "bcp":
-        res = MinimumTimePlanner(
-            rel_term=0.01, max_iter=120,
-            collision_check_tol=1e-3, trajectory_to_plane_tol=1e-3,
-        ).solve(waypoints, obstacles, domain, vel_set, acc_set, verbose=True)
-        label = "BCP"
-        title = (f"BCP guiding example  (T={res.total_time:.2f}s, "
-                 f"{res.num_iterations} iters)")
-        print(f"minimum time : {res.total_time:.3f}s over "
-              f"{res.num_iterations} iters")
-    else:  # scs
-        res = SCSPlanner(rel_term=0.01).solve(
-            waypoints, obstacles, domain, vel_set, acc_set, verbose=True)
-        label = "SCS"
-        title = (f"SCS guiding example  (T={res.total_time:.2f}s, "
-                 f"{res.num_regions} regions)")
-        print(f"minimum time : {res.total_time:.3f}s over "
-              f"{res.num_regions} regions")
+    bcp = MinimumTimePlanner(
+        rel_term=0.01, max_iter=120,
+        collision_check_tol=1e-3, trajectory_to_plane_tol=1e-3,
+    ).solve(waypoints, obstacles, domain, vel_set, acc_set, verbose=True)
+    scs = SCSPlanner(rel_term=0.01).solve(
+        waypoints, obstacles, domain, vel_set, acc_set, verbose=True)
 
-    hits = intersect_with_hpolyhedra(res.trajectory, obstacles, tol=1e-3)
-    print(f"collision-free: {hits == {}}")
+    for name, res, extra in [("BCP", bcp, f"{bcp.num_iterations} iters"),
+                             ("SCS", scs, f"{scs.num_regions} regions")]:
+        hits = intersect_with_hpolyhedra(res.trajectory, obstacles, tol=1e-3)
+        print(f"{name}: T={res.total_time:.3f}s ({extra}), "
+              f"collision-free={hits == {}}")
 
+    opt_curves = [
+        (f"BCP  (T={bcp.total_time:.2f}s)", bcp.trajectory, "red"),
+        (f"SCS  (T={scs.total_time:.2f}s)", scs.trajectory, "tab:blue"),
+    ]
     out_dir = pathlib.Path(__file__).resolve().parent / "_out"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out = out_dir / f"guiding_example_{planner}.png"
-    render(out, obstacle_boxes, waypoints, seed_curve, res.trajectory,
-           title=title, traj_label=f"{label} trajectory")
+    out = out_dir / "guiding_example.png"
+    render(out, obstacle_boxes, waypoints, seed_curve, opt_curves,
+           title="Guiding example: BCP vs SCS")
     print(f"wrote {out}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--planner", choices=["bcp", "scs"], default="bcp",
-                        help="planner backend (default: bcp)")
-    args = parser.parse_args()
-    main(planner=args.planner)
+    main()
