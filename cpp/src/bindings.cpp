@@ -65,4 +65,19 @@ PYBIND11_MODULE(_native, m) {
         "Per-segment obstacle intersection test. Returns {segment_index: "
         "[obstacle_indices]} for segments that are not proven collision-free. "
         "Parallelized over segments with OpenMP when available.");
+
+  m.def("bezier_curve_sphere_collision_free", &BezierCurveSphereCollisionFree,
+        py::arg("curve"), py::arg("center"), py::arg("radius"),
+        py::arg("tol") = 1e-2,
+        "True if the curve is proven to avoid the ball of the given center and "
+        "radius. Conservative: never reports a colliding curve as free.");
+
+  m.def("intersect_composite_bezier_with_spheres",
+        &IntersectCompositeBezierCurveWithSpheres, py::arg("curve"),
+        py::arg("centers"), py::arg("radii"), py::arg("spheres_to_ignore"),
+        py::arg("tol") = 1e-2, py::arg("parallelize") = true,
+        "Per-segment sphere intersection test. Unlike the HPolyhedra variant, "
+        "'spheres_to_ignore' is one ignore-list per segment (length == number "
+        "of segments) and the result is a per-segment list of colliding sphere "
+        "indices (empty for collision-free segments).");
 }

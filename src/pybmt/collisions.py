@@ -27,6 +27,8 @@ __all__ = [
     "to_native_composite",
     "curve_is_collision_free",
     "intersect_with_hpolyhedra",
+    "intersect_with_hyperspheres",
+    "intersect_with_obstacles",
 ]
 
 
@@ -92,3 +94,118 @@ def intersect_with_hpolyhedra(
     hits = _native.intersect_composite_bezier_with_hpolyhedra(
         to_native_composite(curve), As, bs, ignore_map, tol, parallelize)
     return {int(seg): [int(o) for o in obs] for seg, obs in hits.items()}
+
+
+def _sphere_center_radius(sphere) -> tuple[np.ndarray, float]:
+    """Extract ``(center, radius)`` from a Drake hypersphere or a raw tuple.
+
+    The native kernel only handles *balls* (a center and a scalar radius). A
+    Drake ``Hyperellipsoid`` is the ball ``{x : ||A(x - c)|| <= 1}`` only when
+    ``A = (1/r) I`` (isotropic); anisotropic ellipsoids are rejected rather than
+    silently mis-checked.
+    """
+    if isinstance(sphere, pd.Hyperellipsoid):
+        A = np.asarray(sphere.A(), dtype=float)
+        c = np.asarray(sphere.center(), dtype=float).reshape(-1)
+        diag = np.diag(A)
+        if not (np.allclose(A, np.diag(diag)) and np.allclose(diag, diag[0])
+                and diag[0] > 0):
+            raise ValueError(
+                "intersect_with_hyperspheres only supports isotropic "
+                "Hyperellipsoids (A = (1/r) I, i.e. true hyperspheres); got an "
+                "anisotropic ellipsoid.")
+        return c, float(1.0 / diag[0])
+    center, radius = sphere
+    return np.asarray(center, dtype=float).reshape(-1), float(radius)
+
+
+def intersect_with_hyperspheres(
+    curve: pb.CompositeBezierCurve,
+    spheres: Sequence,
+    ignore: Mapping[int, Iterable[int]] | None = None,
+    tol: float = 1e-2,
+    parallelize: bool = True,
+) -> dict[int, list[int]]:
+    """Per-segment intersection test against ball obstacles.
+
+    ``spheres`` is a sequence of either Drake ``Hyperellipsoid`` hyperspheres or
+    ``(center, radius)`` pairs. The return value matches
+    :func:`intersect_with_hpolyhedra`: ``{segment_index: [sphere_indices]}`` for
+    every segment not proven collision-free (free segments are omitted, so an
+    empty dict means the whole trajectory is clear).
+    """
+    centers, radii = [], []
+    for s in spheres:
+        c, r = _sphere_center_radius(s)
+        centers.append(c)
+        radii.append(r)
+
+    # The native sphere kernel takes one ignore-list per segment (not a dict)
+    # and returns a per-segment list (not a dict), so translate both ways.
+    num_segments = len(curve.curves)
+    ignore_lists: list[list[int]] = [[] for _ in range(num_segments)]
+    for seg, obs in (ignore or {}).items():
+        ignore_lists[int(seg)] = [int(o) for o in obs]
+
+    per_segment = _native.intersect_composite_bezier_with_spheres(
+        to_native_composite(curve), centers, radii, ignore_lists, tol,
+        parallelize)
+    return {seg: [int(o) for o in obs]
+            for seg, obs in enumerate(per_segment) if obs}
+
+
+def intersect_with_obstacles(
+    curve: pb.CompositeBezierCurve,
+    obstacles: Sequence[pd.ConvexSet],
+    ignore: Mapping[int, Iterable[int]] | None = None,
+    tol: float = 1e-2,
+    parallelize: bool = True,
+) -> dict[int, list[int]]:
+    """Per-segment intersection test against a mixed list of convex obstacles.
+
+    ``obstacles`` is a single ordered list of Drake ``ConvexSet`` obstacles;
+    each is dispatched to the matching kernel (``HPolyhedron`` -> polytope path,
+    isotropic ``Hyperellipsoid`` -> sphere path). The list order *is* the
+    obstacle index space: both ``ignore`` and the returned
+    ``{segment_index: [obstacle_indices]}`` use those global indices, so callers
+    never see the per-kernel batching. Anything that is neither an
+    ``HPolyhedron`` nor a (true) hypersphere raises.
+    """
+    ignore = ignore or {}
+    hpolys, hpoly_global = [], []
+    spheres, sphere_global = [], []
+    for gi, obs in enumerate(obstacles):
+        if isinstance(obs, pd.HPolyhedron):
+            hpolys.append(obs)
+            hpoly_global.append(gi)
+        elif isinstance(obs, pd.Hyperellipsoid):
+            spheres.append(obs)
+            sphere_global.append(gi)
+        else:
+            raise TypeError(
+                f"obstacle {gi} has unsupported type {type(obs).__name__}; "
+                "expected HPolyhedron or an isotropic Hyperellipsoid")
+
+    def _local_ignore(global_to_local: dict[int, int]) -> dict[int, list[int]]:
+        out: dict[int, list[int]] = {}
+        for seg, obs_ids in ignore.items():
+            locs = [global_to_local[o] for o in obs_ids if o in global_to_local]
+            if locs:
+                out[int(seg)] = locs
+        return out
+
+    result: dict[int, list[int]] = {}
+    if hpolys:
+        local = intersect_with_hpolyhedra(
+            curve, hpolys, ignore=_local_ignore({g: i for i, g in enumerate(hpoly_global)}),
+            tol=tol, parallelize=parallelize)
+        for seg, obs in local.items():
+            result.setdefault(seg, []).extend(hpoly_global[o] for o in obs)
+    if spheres:
+        local = intersect_with_hyperspheres(
+            curve, spheres, ignore=_local_ignore({g: i for i, g in enumerate(sphere_global)}),
+            tol=tol, parallelize=parallelize)
+        for seg, obs in local.items():
+            result.setdefault(seg, []).extend(sphere_global[o] for o in obs)
+
+    return {seg: sorted(obs) for seg, obs in sorted(result.items())}
