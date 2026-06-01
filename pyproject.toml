@@ -38,8 +38,8 @@ dependencies = [
 test = ["pytest>=7"]
 
 [project.urls]
-Homepage = "https://github.com/wernerpe/BCPlanning"
-Repository = "https://github.com/wernerpe/BCPlanning"
+Homepage = "https://github.com/wernerpe/pybmt"
+Repository = "https://github.com/wernerpe/pybmt"
 
 # ---------------------------------------------------------------------------
 # scikit-build-core: drives the CMake build of the pybind11 extension.
