@@ -36,7 +36,7 @@ the top and runs them against the local checkout, so no manual install is
 needed:
 
 ```bash
-uv run examples/guiding_example.py
+uv run examples/box_obstacles_2d.py
 uv run examples/dual_arm_unload.py
 ```
 
@@ -44,15 +44,15 @@ If you already have `pybmt` installed in your environment, run them with plain
 Python instead:
 
 ```bash
-python examples/guiding_example.py
+python examples/box_obstacles_2d.py
 ```
 
-- **`guiding_example.py`** — the headline 2D demo. Five box obstacles sit in a
+- **`box_obstacles_2d.py`** — the headline 2D demo. Five box obstacles sit in a
   10×10 workspace; a 7-waypoint seed path routes around them. It solves the
   scene with both planners — the biconvex `MinimumTimePlanner` (BCP) and the
   `SCSPlanner` convex-region baseline (SCS) — and overlays both optimized
   trajectories against the seed on one legended figure,
-  `examples/_out/guiding_example.png`.
+  `examples/_out/box_obstacles_2d.png`.
 - **`dual_arm_unload.py`** — a dual-arm pallet unload as a pure-geometry
   task-space problem. Two arms each lift a brick off a shared pallet and carry
   it to a color-matched offload zone. The planner works directly on the 6D

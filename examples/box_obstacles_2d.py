@@ -5,7 +5,7 @@
 # [tool.uv.sources]
 # pybmt = { path = "..", editable = true }
 # ///
-"""Guiding example: minimum-time Bezier planning in a 2D convex-obstacle scene.
+"""2D box obstacles: minimum-time Bezier planning in a 2D convex-obstacle scene.
 
 Five box obstacles sit in a 10x10 workspace; a collision-free 7-waypoint seed
 path routes around them. A minimum-time planner refines that seed into a
@@ -18,11 +18,11 @@ It solves the scene with both planners and overlays them on one figure:
   * ``scs`` — the ``SCSPlanner`` baseline (convex regions + scsplanning, with
     Assumption-1 splitting planes added between non-adjacent regions).
 
-Run it (renders to ``examples/_out/guiding_example.png``):
+Run it (renders to ``examples/_out/box_obstacles_2d.png``):
 
-    uv run examples/guiding_example.py
+    uv run examples/box_obstacles_2d.py
     # or, in an environment where pybmt is already installed:
-    python examples/guiding_example.py
+    python examples/box_obstacles_2d.py
 """
 
 from __future__ import annotations
@@ -132,9 +132,9 @@ def main():
     ]
     out_dir = pathlib.Path(__file__).resolve().parent / "_out"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out = out_dir / "guiding_example.png"
+    out = out_dir / "box_obstacles_2d.png"
     render(out, obstacle_boxes, waypoints, seed_curve, opt_curves,
-           title="Guiding example: BCP vs SCS")
+           title="2D box obstacles: BCP vs SCS")
     print(f"wrote {out}")
 
 
