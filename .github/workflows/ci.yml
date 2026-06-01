@@ -44,9 +44,8 @@ jobs:
       - name: Install package (with test extras)
         run: |
           python -m pip install --upgrade pip
-          # scsplanning is not on PyPI; install it from source first so it
-          # satisfies pybmt's requirement without hitting the index.
-          pip install "scsplanning @ git+https://github.com/TobiaMarcucci/scsplanning.git"
+          # pybmt pins scsplanning to a git commit (not on PyPI); pip resolves
+          # that direct reference from pyproject during the editable install.
           pip install -e '.[test]'
 
       - name: Run Python tests

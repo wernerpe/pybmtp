@@ -28,7 +28,10 @@ dependencies = [
     "scipy>=1.9",
     "drake>=1.35",
     "pybezier>=0.1.4",
-    "scsplanning>=0.1",
+    # scsplanning is not published to PyPI; pin it to a specific commit of the
+    # upstream repo. (A direct URL means the project can't be uploaded to PyPI
+    # as-is, but it makes `pip install` of pybmt reproducible from source.)
+    "scsplanning @ git+https://github.com/TobiaMarcucci/scsplanning.git@d3f885aa2b74a10418de96e61ec2df0bf6ef16b8",
 ]
 
 [project.optional-dependencies]
