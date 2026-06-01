@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Build the wheel (pybind11 extension via scikit-build-core) and run the
+  # Python test suite against the pip-installed package on Linux and macOS.
+  python:
+    name: python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.11", "3.12"]
+        exclude:
+          # drake publishes a single recent CPython wheel for macOS arm64; keep
+          # the macOS leg to one interpreter to avoid resolver churn.
+          - os: macos-latest
+            python-version: "3.11"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system build deps (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libeigen3-dev libomp-dev
+
+      - name: Install system build deps (macOS)
+        if: runner.os == 'macOS'
+        run: brew install eigen libomp
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package (with test extras)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[test]'
+
+      - name: Run Python tests
+        run: pytest -q
+
+  # Build and run the native gtest target (Bezier collision kernel) on Linux.
+  native:
+    name: native gtest on ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system build deps
+        run: sudo apt-get update && sudo apt-get install -y libeigen3-dev libomp-dev
+
+      - name: Configure
+        run: cmake -S . -B build-cpp -DPYBMT_BUILD_TESTS=ON -DPYBMT_BUILD_PYTHON=OFF -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build-cpp --parallel
+
+      - name: Test
+        run: ctest --test-dir build-cpp --output-on-failure
