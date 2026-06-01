@@ -48,13 +48,22 @@ python examples/guiding_example.py
 ```
 
 - **`guiding_example.py`** — the headline 2D demo. Five box obstacles sit in a
-  10×10 workspace; a 7-waypoint seed path routes around them and the
-  `MinimumTimePlanner` (BCP) refines it into a minimum-time trajectory under
-  velocity/acceleration limits. Renders the seed and optimized trajectory to
-  `examples/_out/guiding_example.png`.
-- **`dual_arm_unload.py`** — a dual-arm pallet unload mirrored as a
-  pure-geometry problem (no diff-IK, no URDF). Two arms each lift a brick off a
-  shared pallet and carry it to a color-matched offload zone; the planner works
-  directly on the 6D task-space state `[red_xyz, blue_xyz]` with
-  configuration-space HPolyhedron collision obstacles, then publishes a meshcat
-  animation of the bricks and grippers.
+  10×10 workspace; a 7-waypoint seed path routes around them and the planner
+  refines it into a minimum-time trajectory under velocity/acceleration limits.
+  Renders the seed and optimized trajectory to
+  `examples/_out/guiding_example_<planner>.png`.
+- **`dual_arm_unload.py`** — a dual-arm pallet unload as a pure-geometry
+  task-space problem. Two arms each lift a brick off a shared pallet and carry
+  it to a color-matched offload zone. The planner works directly on the 6D
+  task-space state `[red_xyz, blue_xyz]`, with each collision pair (brick vs
+  brick, gripper vs brick, gripper vs gripper) expressed as a configuration-space
+  HPolyhedron. It samples a random unloadable pallet, plans the simultaneous
+  two-arm move, and publishes a meshcat animation of the bricks and grippers.
+
+Both examples accept `--planner {bcp,scs}` to pick the biconvex
+`MinimumTimePlanner` (default) or the `SCSPlanner` convex-region baseline:
+
+```bash
+uv run examples/guiding_example.py --planner scs
+uv run examples/dual_arm_unload.py --planner scs --seed 3
+```

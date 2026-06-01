@@ -14,22 +14,28 @@ works directly on the 6D task-space state ``[red_xyz, blue_xyz]`` (each arm's
 built from box Minkowski sums.
 
 The script samples a random unloadable pallet, plans the simultaneous two-arm
-move with the biconvex MinimumTimePlanner, verifies the result is collision
-free, and publishes a meshcat animation of the bricks and grippers.
+move, verifies the result is collision free, and publishes a meshcat animation
+of the bricks and grippers.
+
+Choose the planner with ``--planner``: ``bcp`` (default, the biconvex
+MinimumTimePlanner) or ``scs`` (the SCSPlanner baseline, which adds
+Assumption-1 splitting planes between non-adjacent convex regions).
 
     uv run examples/dual_arm_unload.py
+    uv run examples/dual_arm_unload.py --planner scs --seed 3
     # or, with pybmt already installed:
     python examples/dual_arm_unload.py
 """
 
 from __future__ import annotations
 
+import argparse
 import time
 
 import numpy as np
 import pydrake.all as pd
 
-from pybmt import MinimumTimePlanner
+from pybmt import MinimumTimePlanner, SCSPlanner
 from pybmt.collisions import intersect_with_hpolyhedra
 
 # --- scene constants (mirrors the hardware sim) ---------------------------
@@ -219,7 +225,7 @@ def animate(meshcat, trajectory, red, blue, stationary_bricks, gripper_offsets,
     meshcat.PublishRecording()
 
 
-def main(seed=0):
+def main(seed=0, planner="bcp"):
     rng = np.random.default_rng(seed)
     red, blue, stationary, all_bricks = sample_pallet(rng)
 
@@ -252,13 +258,20 @@ def main(seed=0):
           f"{sum(b['color'] == 'blue' for b in all_bricks)} blue), "
           f"{len(obstacles)} obstacles")
 
-    res = MinimumTimePlanner(
-        rel_term=0.01, max_iter=200,
-        collision_check_tol=1e-3, trajectory_to_plane_tol=1e-3,
-    ).solve(waypoints, obstacles, domain, vel_set, acc_set, verbose=True)
+    if planner == "bcp":
+        res = MinimumTimePlanner(
+            rel_term=0.01, max_iter=200,
+            collision_check_tol=1e-3, trajectory_to_plane_tol=1e-3,
+        ).solve(waypoints, obstacles, domain, vel_set, acc_set, verbose=True)
+        print(f"minimum time : {res.total_time:.3f}s over "
+              f"{res.num_iterations} iters")
+    else:  # scs
+        res = SCSPlanner(rel_term=0.01).solve(
+            waypoints, obstacles, domain, vel_set, acc_set, verbose=True)
+        print(f"minimum time : {res.total_time:.3f}s over "
+              f"{res.num_regions} regions")
 
     hits = intersect_with_hpolyhedra(res.trajectory, obstacles, tol=1e-3)
-    print(f"minimum time : {res.total_time:.3f}s over {res.num_iterations} iters")
     print(f"collision-free: {hits == {}}")
 
     stationary_bricks = [b for b in all_bricks if b is not red and b is not blue]
@@ -274,4 +287,10 @@ def main(seed=0):
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--planner", choices=["bcp", "scs"], default="bcp",
+                        help="planner backend (default: bcp)")
+    parser.add_argument("--seed", type=int, default=0,
+                        help="RNG seed for the random pallet (default: 0)")
+    args = parser.parse_args()
+    main(seed=args.seed, planner=args.planner)
