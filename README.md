@@ -36,7 +36,7 @@ run — no manual install needed:
 ```bash
 cd examples
 uv run box_obstacles_2d.py                          # 2D box-obstacle demo (BCP vs SCS)
-uv run dual_arm_unload.py --planner bcp --seed 3    # dual-arm pallet unload
+uv run dual_arm_unload.py --planner bcp             # dual-arm pallet unload
 ```
 
 ## Tests
