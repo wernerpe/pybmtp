@@ -30,18 +30,19 @@ specific upstream commit, since it has no PyPI release).
 
 ## Examples
 
-The scripts in `examples/` are self-contained [PEP 723](https://peps.python.org/pep-0723/)
-scripts: [`uv`](https://docs.astral.sh/uv/) reads the inline dependency block at
-the top and runs them against the local checkout, so no manual install is
-needed:
+The `examples/` directory is a small [`uv`](https://docs.astral.sh/uv/) project
+(`examples/pyproject.toml`) that depends on `pybmt` (resolved editable from this
+checkout) and `matplotlib`. Run any example from inside it and `uv` builds the
+shared environment automatically — no manual install needed:
 
 ```bash
-uv run examples/box_obstacles_2d.py
-uv run examples/dual_arm_unload.py
+cd examples
+uv run box_obstacles_2d.py
+uv run dual_arm_unload.py
 ```
 
 If you already have `pybmt` installed in your environment, run them with plain
-Python instead:
+Python from the repo root instead:
 
 ```bash
 python examples/box_obstacles_2d.py
@@ -65,7 +66,7 @@ python examples/box_obstacles_2d.py
   `--planner {bcp,scs}` (default `bcp`) and the pallet with `--seed`:
 
 ```bash
-uv run examples/dual_arm_unload.py --planner scs --seed 3
+cd examples && uv run dual_arm_unload.py --planner scs --seed 3
 ```
 
 ## Tests

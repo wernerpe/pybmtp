@@ -1,10 +1,3 @@
-# /// script
-# requires-python = ">=3.10"
-# dependencies = ["pybmt"]
-#
-# [tool.uv.sources]
-# pybmt = { path = "..", editable = true }
-# ///
 """Dual-arm pallet unload mirrored as a pure-geometry BCP problem.
 
 Two arms (red, blue) each lift one brick off a shared pallet and carry it to a
@@ -21,8 +14,8 @@ Choose the planner with ``--planner``: ``bcp`` (default, the biconvex
 MinimumTimePlanner) or ``scs`` (the SCSPlanner baseline, which adds
 Assumption-1 splitting planes between non-adjacent convex regions).
 
-    uv run examples/dual_arm_unload.py
-    uv run examples/dual_arm_unload.py --planner scs --seed 3
+    cd examples && uv run dual_arm_unload.py
+    cd examples && uv run dual_arm_unload.py --planner scs --seed 3
     # or, with pybmt already installed:
     python examples/dual_arm_unload.py
 """

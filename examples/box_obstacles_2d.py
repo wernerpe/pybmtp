@@ -1,10 +1,3 @@
-# /// script
-# requires-python = ">=3.10"
-# dependencies = ["pybmt", "matplotlib"]
-#
-# [tool.uv.sources]
-# pybmt = { path = "..", editable = true }
-# ///
 """2D box obstacles: minimum-time Bezier planning in a 2D convex-obstacle scene.
 
 Five box obstacles sit in a 10x10 workspace; a collision-free 7-waypoint seed
@@ -20,7 +13,7 @@ It solves the scene with both planners and overlays them on one figure:
 
 Run it (renders to ``examples/_out/box_obstacles_2d.png``):
 
-    uv run examples/box_obstacles_2d.py
+    cd examples && uv run box_obstacles_2d.py
     # or, in an environment where pybmt is already installed:
     python examples/box_obstacles_2d.py
 """
