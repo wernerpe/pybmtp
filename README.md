@@ -1,17 +1,16 @@
-# pybmt
+# PyBMT: Biconvex Minimum-time Trajectory Planning Around Convex Obstacles
 
-Biconvex minimum-time trajectory planning with Bezier curves.
+Software accompanying the paper. More details to follow.
 
 `pybmt` plans time-optimal Bezier trajectories that respect velocity and
-acceleration limits while avoiding convex obstacles. It ships three planners:
+acceleration limits while avoiding convex obstacles. The software contains three planners:
 
 - **`MinimumTimePlanner`** — the headline biconvex planner (BCP): an outer loop
   alternating a trajectory-update SOCP and a separating-plane-update LP, with a
   parallel Bezier collision check between them.
 - **`PolygonalInitializer`** — a fast constraint-respecting polygonal warm start
   used to seed the biconvex planners.
-- **`SCSPlanner`** — the sequential-convex-shrinking variant using exact convex
-  obstacle separation.
+- **`SCSPlanner`** — Combination of Edge-Inflation for convex obstacles paired with SCSPlanning as used in the paper.
 
 The Bezier collision check is a small C++ extension built on Eigen, with
 optional OpenMP parallelism.
@@ -37,7 +36,7 @@ run — no manual install needed:
 ```bash
 cd examples
 uv run box_obstacles_2d.py                          # 2D box-obstacle demo (BCP vs SCS)
-uv run dual_arm_unload.py --planner scs --seed 3    # dual-arm pallet unload
+uv run dual_arm_unload.py --planner bcp --seed 3    # dual-arm pallet unload
 ```
 
 ## Tests
