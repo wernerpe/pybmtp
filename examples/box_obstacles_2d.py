@@ -21,6 +21,7 @@ Run it (renders to ``examples/_out/box_obstacles_2d.png``):
 from __future__ import annotations
 
 import pathlib
+import time
 
 import numpy as np
 import pydrake.all as pd
@@ -106,12 +107,17 @@ def main():
     seed_curve = PolygonalInitializer(
         vel_set, acc_set, force_same_segment_time=True).initialize(waypoints)
 
+    t0 = time.perf_counter()
     bcp = MinimumTimePlanner(
         rel_term=0.01, max_iter=120,
         collision_check_tol=1e-3, trajectory_to_plane_tol=1e-3,
     ).solve(waypoints, obstacles, domain, vel_set, acc_set, verbose=True)
+    bcp_solve_s = time.perf_counter() - t0
+
+    t0 = time.perf_counter()
     scs = SCSPlanner(rel_term=0.01).solve(
         waypoints, obstacles, domain, vel_set, acc_set, verbose=True)
+    scs_solve_s = time.perf_counter() - t0
 
     for name, res, extra in [("BCP", bcp, f"{bcp.num_iterations} iters"),
                              ("SCS", scs, f"{scs.num_regions} regions")]:
@@ -120,8 +126,10 @@ def main():
               f"collision-free={hits == {}}")
 
     opt_curves = [
-        (f"BCP  (T={bcp.total_time:.2f}s)", bcp.trajectory, "red"),
-        (f"SCS  (T={scs.total_time:.2f}s)", scs.trajectory, "tab:blue"),
+        (f"BCP  (T={bcp.total_time:.2f}s, solve {bcp_solve_s:.2f}s)",
+         bcp.trajectory, "red"),
+        (f"SCS  (T={scs.total_time:.2f}s, solve {scs_solve_s:.2f}s)",
+         scs.trajectory, "tab:blue"),
     ]
     out_dir = pathlib.Path(__file__).resolve().parent / "_out"
     out_dir.mkdir(parents=True, exist_ok=True)
