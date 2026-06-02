@@ -30,49 +30,14 @@ specific upstream commit, since it has no PyPI release).
 
 ## Examples
 
-The `examples/` directory is a small [`uv`](https://docs.astral.sh/uv/) project
-(`examples/pyproject.toml`) that depends on `pybmt` (resolved editable from this
-checkout) and `matplotlib`. Run any example from inside it and `uv` builds the
-shared environment automatically — no manual install needed:
+Requires [`uv`](https://docs.astral.sh/uv/). The `examples/` directory is a uv
+project, so `uv run` builds the environment (including the right Python) on first
+run — no manual install needed:
 
 ```bash
 cd examples
-uv run box_obstacles_2d.py
-uv run dual_arm_unload.py
-```
-
-You do **not** need a matching Python on your machine. `examples/.python-version`
-pins the project to CPython 3.12 — the interpreter `drake` publishes a macOS
-wheel for — and `uv` downloads and uses it automatically even if your system
-Python is a different (or unsupported) version. This is the recommended way to
-run the examples on macOS.
-
-If you already have `pybmt` installed in a compatible environment, run them with
-plain Python from the repo root instead:
-
-```bash
-python examples/box_obstacles_2d.py
-```
-
-- **`box_obstacles_2d.py`** — the headline 2D demo. Five box obstacles sit in a
-  10×10 workspace; a 7-waypoint seed path routes around them. It solves the
-  scene with both planners — the biconvex `MinimumTimePlanner` (BCP) and the
-  `SCSPlanner` convex-region baseline (SCS) — and overlays both optimized
-  trajectories against the seed on one legended figure,
-  `examples/_out/box_obstacles_2d.png`.
-- **`dual_arm_unload.py`** — a dual-arm pallet unload as a pure-geometry
-  task-space problem. Two arms each lift a brick off a shared pallet and carry
-  it to a color-matched offload zone. The planner works directly on the 6D
-  task-space state `[red_xyz, blue_xyz]`, with each collision pair (brick vs
-  brick, gripper vs brick, gripper vs gripper) expressed as a configuration-space
-  HPolyhedron. It samples a random unloadable pallet, plans the simultaneous
-  two-arm move, publishes a meshcat animation, and writes a 3D plot of each
-  arm's waypoint seed vs. optimized path to
-  `examples/_out/dual_arm_unload_<planner>.png`. Pick the planner with
-  `--planner {bcp,scs}` (default `bcp`) and the pallet with `--seed`:
-
-```bash
-cd examples && uv run dual_arm_unload.py --planner scs --seed 3
+uv run box_obstacles_2d.py                          # 2D box-obstacle demo (BCP vs SCS)
+uv run dual_arm_unload.py --planner scs --seed 3    # dual-arm pallet unload
 ```
 
 ## Tests
