@@ -41,8 +41,14 @@ uv run box_obstacles_2d.py
 uv run dual_arm_unload.py
 ```
 
-If you already have `pybmt` installed in your environment, run them with plain
-Python from the repo root instead:
+You do **not** need a matching Python on your machine. `examples/.python-version`
+pins the project to CPython 3.12 — the interpreter `drake` publishes a macOS
+wheel for — and `uv` downloads and uses it automatically even if your system
+Python is a different (or unsupported) version. This is the recommended way to
+run the examples on macOS.
+
+If you already have `pybmt` installed in a compatible environment, run them with
+plain Python from the repo root instead:
 
 ```bash
 python examples/box_obstacles_2d.py
