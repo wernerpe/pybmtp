@@ -26,7 +26,10 @@ classifiers = [
 dependencies = [
     "numpy>=1.23",
     "scipy>=1.9",
-    "drake>=1.35",
+    # 1.33.0 is the last drake wheel built for macOS 13; pybmt's only newer-API
+    # use was solvers.SolveInParallel, which now falls back to a serial solve
+    # (see pybmt/_solve.py) so this floor stays installable on macOS 13 (arm64).
+    "drake>=1.33",
     "pybezier>=0.1.4",
     # scsplanning is not published to PyPI; pin it to a specific commit of the
     # upstream repo. (A direct URL means the project can't be uploaded to PyPI

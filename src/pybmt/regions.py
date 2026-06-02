@@ -23,6 +23,8 @@ from typing import List, Optional
 import numpy as np
 import pydrake.all as pd
 
+from ._solve import solve_in_parallel
+
 
 def construct_regions_from_obstacles(
     path: np.ndarray,
@@ -102,7 +104,7 @@ def construct_regions_from_obstacles(
             seg_of_prog.append(j)
             obs_of_prog.append(obs_id)
 
-    results = pd.SolveInParallel(progs=progs, parallelism=pd.Parallelism.Max())
+    results = solve_in_parallel(progs)
 
     seg_A = [domain.A().copy() for _ in range(num_segments)]
     seg_b = [domain.b().copy() for _ in range(num_segments)]

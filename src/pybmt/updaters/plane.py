@@ -22,6 +22,7 @@ import pybezier as pb
 import pydrake.all as pd
 from scipy.special import comb as _comb
 
+from .._solve import solve_in_parallel
 from ..geometry import add_supporting_plane
 
 
@@ -179,11 +180,7 @@ class PlaneUpdater:
             clones.append(clone)
             meta.append((seg_id, obs_id, a_flat, b_flat))
 
-        results = pd.SolveInParallel(
-            progs=clones,
-            solver_options=self._solver_opts,
-            parallelism=pd.Parallelism.Max(),
-        )
+        results = solve_in_parallel(clones, self._solver_opts)
 
         planes: Dict[Tuple[int, int], Tuple[pb.BezierCurve, pb.BezierCurve]] = {}
         for result, (seg_id, obs_id, a_flat, b_flat) in zip(results, meta):
