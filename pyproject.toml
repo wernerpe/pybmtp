@@ -29,7 +29,10 @@ dependencies = [
     # 1.33.0 is the last drake wheel built for macOS 13; pybmt's only newer-API
     # use was solvers.SolveInParallel, which now falls back to a serial solve
     # (see pybmt/_solve.py) so this floor stays installable on macOS 13 (arm64).
-    "drake>=1.33",
+    "drake>=1.33; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+    # drake stopped publishing macOS x86_64 (Intel Mac) wheels after 1.34.0, and
+    # there is no sdist, so cap Intel-macOS resolution at the last wheel.
+    "drake>=1.33,<=1.34; sys_platform == 'darwin' and platform_machine == 'x86_64'",
     "pybezier>=0.1.4",
     # scsplanning is not published to PyPI; pin it to a specific commit of the
     # upstream repo. (A direct URL means the project can't be uploaded to PyPI
