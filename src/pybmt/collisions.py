@@ -69,8 +69,7 @@ def curve_is_collision_free(
     """
     A = np.asarray(obstacle.A(), dtype=float)
     b = np.asarray(obstacle.b(), dtype=float).reshape(-1)
-    return bool(_native.bezier_curve_hpolyhedron_collision_free(
-        to_native_curve(curve), A, b, tol))
+    return bool(_native.bezier_curve_hpolyhedron_collision_free(to_native_curve(curve), A, b, tol))
 
 
 def intersect_with_hpolyhedra(
@@ -92,7 +91,8 @@ def intersect_with_hpolyhedra(
     As, bs = _hpolyhedron_arrays(obstacles)
     ignore_map = {int(k): [int(i) for i in v] for k, v in (ignore or {}).items()}
     hits = _native.intersect_composite_bezier_with_hpolyhedra(
-        to_native_composite(curve), As, bs, ignore_map, tol, parallelize)
+        to_native_composite(curve), As, bs, ignore_map, tol, parallelize
+    )
     return {int(seg): [int(o) for o in obs] for seg, obs in hits.items()}
 
 
@@ -108,12 +108,12 @@ def _sphere_center_radius(sphere) -> tuple[np.ndarray, float]:
         A = np.asarray(sphere.A(), dtype=float)
         c = np.asarray(sphere.center(), dtype=float).reshape(-1)
         diag = np.diag(A)
-        if not (np.allclose(A, np.diag(diag)) and np.allclose(diag, diag[0])
-                and diag[0] > 0):
+        if not (np.allclose(A, np.diag(diag)) and np.allclose(diag, diag[0]) and diag[0] > 0):
             raise ValueError(
                 "intersect_with_hyperspheres only supports isotropic "
                 "Hyperellipsoids (A = (1/r) I, i.e. true hyperspheres); got an "
-                "anisotropic ellipsoid.")
+                "anisotropic ellipsoid."
+            )
         return c, float(1.0 / diag[0])
     center, radius = sphere
     return np.asarray(center, dtype=float).reshape(-1), float(radius)
@@ -148,10 +148,9 @@ def intersect_with_hyperspheres(
         ignore_lists[int(seg)] = [int(o) for o in obs]
 
     per_segment = _native.intersect_composite_bezier_with_spheres(
-        to_native_composite(curve), centers, radii, ignore_lists, tol,
-        parallelize)
-    return {seg: [int(o) for o in obs]
-            for seg, obs in enumerate(per_segment) if obs}
+        to_native_composite(curve), centers, radii, ignore_lists, tol, parallelize
+    )
+    return {seg: [int(o) for o in obs] for seg, obs in enumerate(per_segment) if obs}
 
 
 def intersect_with_obstacles(
@@ -184,7 +183,8 @@ def intersect_with_obstacles(
         else:
             raise TypeError(
                 f"obstacle {gi} has unsupported type {type(obs).__name__}; "
-                "expected HPolyhedron or an isotropic Hyperellipsoid")
+                "expected HPolyhedron or an isotropic Hyperellipsoid"
+            )
 
     def _local_ignore(global_to_local: dict[int, int]) -> dict[int, list[int]]:
         out: dict[int, list[int]] = {}
@@ -197,14 +197,22 @@ def intersect_with_obstacles(
     result: dict[int, list[int]] = {}
     if hpolys:
         local = intersect_with_hpolyhedra(
-            curve, hpolys, ignore=_local_ignore({g: i for i, g in enumerate(hpoly_global)}),
-            tol=tol, parallelize=parallelize)
+            curve,
+            hpolys,
+            ignore=_local_ignore({g: i for i, g in enumerate(hpoly_global)}),
+            tol=tol,
+            parallelize=parallelize,
+        )
         for seg, obs in local.items():
             result.setdefault(seg, []).extend(hpoly_global[o] for o in obs)
     if spheres:
         local = intersect_with_hyperspheres(
-            curve, spheres, ignore=_local_ignore({g: i for i, g in enumerate(sphere_global)}),
-            tol=tol, parallelize=parallelize)
+            curve,
+            spheres,
+            ignore=_local_ignore({g: i for i, g in enumerate(sphere_global)}),
+            tol=tol,
+            parallelize=parallelize,
+        )
         for seg, obs in local.items():
             result.setdefault(seg, []).extend(sphere_global[o] for o in obs)
 

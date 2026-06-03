@@ -7,9 +7,7 @@ straight path) actually detour around it.
 """
 
 import numpy as np
-import pybezier as pb
 import pydrake.all as pd
-import pytest
 
 from pybmt import MinimumTimePlanner, SolveResult, solve_minimum_time
 from pybmt.collisions import intersect_with_hpolyhedra
@@ -70,12 +68,10 @@ def test_detours_around_blocking_obstacle():
     # keeping it on the safe side of the separating planes.
     obstacle = box([-0.5, -0.6], [0.5, 0.6])
     path = np.array([[-2.0, 0.0], [0.0, 1.2], [2.0, 0.0]])
-    res = MinimumTimePlanner(rel_term=0.05, max_iter=80).solve(
-        path, [obstacle], domain, v, a)
+    res = MinimumTimePlanner(rel_term=0.05, max_iter=80).solve(path, [obstacle], domain, v, a)
 
     # Final trajectory must be collision-free against the obstacle.
-    hits = intersect_with_hpolyhedra(
-        res.feasible_trajectories[-1], [obstacle], tol=1e-3)
+    hits = intersect_with_hpolyhedra(res.feasible_trajectories[-1], [obstacle], tol=1e-3)
     assert hits == {}, f"final trajectory still collides: {hits}"
     # And it must have separating planes recorded.
     assert len(res.planes) >= 1
@@ -87,8 +83,7 @@ def test_converges_and_is_monotone_in_feasible_time():
     domain = box([-5, -5], [5, 5])
     obstacle = box([-0.5, -0.6], [0.5, 0.6])
     path = np.array([[-2.0, 0.0], [0.0, 1.2], [2.0, 0.0]])
-    res = MinimumTimePlanner(rel_term=0.05, max_iter=80).solve(
-        path, [obstacle], domain, v, a)
+    res = MinimumTimePlanner(rel_term=0.05, max_iter=80).solve(path, [obstacle], domain, v, a)
 
     assert res.converged
     # Feasible segment times should be non-increasing (planner only accepts

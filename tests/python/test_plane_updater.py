@@ -31,6 +31,7 @@ def straight_segment(start, end, degree, t0, t1):
 def box_vertices(lb, ub):
     lb, ub = np.asarray(lb, float), np.asarray(ub, float)
     from itertools import product
+
     return np.array(list(product(*zip(lb, ub))))
 
 
@@ -56,8 +57,7 @@ def test_supporting_plane_separates_box_from_point():
 def test_conic_description_types():
     A, B, c, cone = get_conic_description(box([-1, -1], [1, 1]))
     assert cone == "nonneg_orthant" and B is None
-    A, B, c, cone = get_conic_description(
-        pd.Hyperellipsoid(np.eye(2), np.zeros(2)))
+    A, B, c, cone = get_conic_description(pd.Hyperellipsoid(np.eye(2), np.zeros(2)))
     assert cone == "soc"
 
 

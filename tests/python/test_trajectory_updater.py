@@ -37,9 +37,15 @@ def problem():
 
 def make_updater(problem, **kw):
     return TrajectoryUpdater(
-        problem["source"], problem["target"], problem["domain"],
-        problem["num_segments"], problem["velocity_set"],
-        problem["acceleration_set"], degree=problem["degree"], **kw)
+        problem["source"],
+        problem["target"],
+        problem["domain"],
+        problem["num_segments"],
+        problem["velocity_set"],
+        problem["acceleration_set"],
+        degree=problem["degree"],
+        **kw,
+    )
 
 
 def sample(curve, n=400):

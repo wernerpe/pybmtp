@@ -79,17 +79,21 @@ def _plane_constraint_matrix(
     for i in range(n_out):
         for j in range(max(0, i - n), min(m, i) + 1):
             k = i - j
-            coeff = float(_comb(m, j, exact=True) * _comb(n, k, exact=True)
-                          / _comb(prod_d, i, exact=True))
-            A_mat[i, k * dim:(k + 1) * dim] += coeff * np.asarray(a_points[j], float)
+            coeff = float(
+                _comb(m, j, exact=True) * _comb(n, k, exact=True) / _comb(prod_d, i, exact=True)
+            )
+            A_mat[i, k * dim : (k + 1) * dim] += coeff * np.asarray(a_points[j], float)
 
     # Degree-elevate b from degree m up to prod_d, then ub = tol - b_elevated.
     elev_d = prod_d - m  # == n
     b_elev = np.zeros(n_out)
     for i in range(n_out):
         for j in range(max(0, i - elev_d), min(m, i) + 1):
-            coeff = float(_comb(m, j, exact=True) * _comb(elev_d, i - j, exact=True)
-                          / _comb(prod_d, i, exact=True))
+            coeff = float(
+                _comb(m, j, exact=True)
+                * _comb(elev_d, i - j, exact=True)
+                / _comb(prod_d, i, exact=True)
+            )
             b_elev[i] += coeff * float(b_points[j])
 
     return A_mat, np.full(n_out, tol) - b_elev
@@ -152,8 +156,9 @@ class TrajectoryUpdater:
         self.add_c2_continuity = add_c2_continuity
         self.domain = domain
 
-        hpoly_sets = (isinstance(velocity_set, pd.HPolyhedron)
-                      and isinstance(acceleration_set, pd.HPolyhedron))
+        hpoly_sets = isinstance(velocity_set, pd.HPolyhedron) and isinstance(
+            acceleration_set, pd.HPolyhedron
+        )
         self.use_symbolic_constraints = use_symbolic_constraints or not hpoly_sets
 
         assert self.vel_set.PointInSet(np.zeros(self.dim)), "0 must be in the velocity set"
@@ -222,7 +227,8 @@ class TrajectoryUpdater:
                     continue
                 self.domain.AddPointInSetConstraints(self.prog, cp)
             self.untimed_segments.append(
-                pb.BezierCurve(np.array(cps), initial_time=0, final_time=1))
+                pb.BezierCurve(np.array(cps), initial_time=0, final_time=1)
+            )
 
         self._seg_vars_flat = [seg.points.flatten() for seg in self.untimed_segments]
 
@@ -279,26 +285,32 @@ class TrajectoryUpdater:
             v_start, v_stop, a_start, a_stop = self._derivative_index_range(s_idx, n_segs)
             for i in range(v_start, v_stop):
                 c = self.prog.AddLinearConstraint(
-                    A_vel, lb_vel, ub_vel,
-                    np.concatenate([pts[i + 1], pts[i], [self.T_powers[1]]]))
+                    A_vel, lb_vel, ub_vel, np.concatenate([pts[i + 1], pts[i], [self.T_powers[1]]])
+                )
                 c.evaluator().set_description(f"velocity_seg{s_idx}_cp{i}")
             for i in range(a_start, a_stop):
                 c = self.prog.AddLinearConstraint(
-                    A_acc, lb_acc, ub_acc,
-                    np.concatenate([pts[i + 2], pts[i + 1], pts[i], [self.T_powers[2]]]))
+                    A_acc,
+                    lb_acc,
+                    ub_acc,
+                    np.concatenate([pts[i + 2], pts[i + 1], pts[i], [self.T_powers[2]]]),
+                )
                 c.evaluator().set_description(f"acceleration_seg{s_idx}_cp{i}")
 
         for s_id in range(n_segs - 1):
             s1, s2 = self.untimed_segments[s_id], self.untimed_segments[s_id + 1]
             if s1.degree >= 2:
                 c = self.prog.AddLinearConstraint(
-                    A_c1, eq_c1, eq_c1,
-                    np.concatenate([s1.points[-1], s1.points[-2], s2.points[1]]))
+                    A_c1, eq_c1, eq_c1, np.concatenate([s1.points[-1], s1.points[-2], s2.points[1]])
+                )
                 c.evaluator().set_description(f"C1_seg{s_id}_to_{s_id+1}")
             if self.add_c2_continuity and s1.degree >= 3:
                 c = self.prog.AddLinearConstraint(
-                    A_c2, eq_c2, eq_c2,
-                    np.concatenate([s1.points[-3], s1.points[-2], s2.points[1], s2.points[2]]))
+                    A_c2,
+                    eq_c2,
+                    eq_c2,
+                    np.concatenate([s1.points[-3], s1.points[-2], s2.points[1], s2.points[2]]),
+                )
                 c.evaluator().set_description(f"C2_seg{s_id}_to_{s_id+1}")
 
     # ----------------------------------------- limits + continuity (symbolic)
@@ -317,11 +329,16 @@ class TrajectoryUpdater:
             v_start, v_stop, a_start, a_stop = self._derivative_index_range(s_idx, n_segs)
 
             for i in range(v_start, v_stop):
-                self._add_set_membership(self.vel_set, sdot.points[i], self.T_powers[1],
-                                         f"velocity_seg{s_idx}_cp{i}")
+                self._add_set_membership(
+                    self.vel_set, sdot.points[i], self.T_powers[1], f"velocity_seg{s_idx}_cp{i}"
+                )
             for i in range(a_start, a_stop):
-                self._add_set_membership(self.acc_set, sddot.points[i], self.T_powers[2],
-                                         f"acceleration_seg{s_idx}_cp{i}")
+                self._add_set_membership(
+                    self.acc_set,
+                    sddot.points[i],
+                    self.T_powers[2],
+                    f"acceleration_seg{s_idx}_cp{i}",
+                )
 
         for s_id in range(n_segs - 1):
             s1, s2 = self.untimed_segments[s_id], self.untimed_segments[s_id + 1]
@@ -337,7 +354,9 @@ class TrajectoryUpdater:
     def _add_set_membership(self, convex_set, point, scale, description) -> None:
         """Enforce ``point in scale * convex_set`` symbolically."""
         if isinstance(convex_set, pd.HPolyhedron):
-            c = self.prog.AddLinearConstraint(pd.le(convex_set.A() @ point - convex_set.b() * scale, 0))
+            c = self.prog.AddLinearConstraint(
+                pd.le(convex_set.A() @ point - convex_set.b() * scale, 0)
+            )
             c.evaluator().set_description(description)
         else:
             aux = self.prog.NewContinuousVariables(self.dim)
@@ -374,18 +393,22 @@ class TrajectoryUpdater:
         if self.add_terminal_velocity_constraint:
             # Zero endpoint velocity <=> first two (last two) control points coincide.
             c = self.prog.AddLinearConstraint(
-                pd.eq(self.untimed_segments[0].points[0], self.untimed_segments[0].points[1]))
+                pd.eq(self.untimed_segments[0].points[0], self.untimed_segments[0].points[1])
+            )
             c.evaluator().set_description("boundary_initial_velocity_zero")
             c = self.prog.AddLinearConstraint(
-                pd.eq(self.untimed_segments[-1].points[-1], self.untimed_segments[-1].points[-2]))
+                pd.eq(self.untimed_segments[-1].points[-1], self.untimed_segments[-1].points[-2])
+            )
             c.evaluator().set_description("boundary_terminal_velocity_zero")
         if self.untimed_segments[0].degree > 3 and self.add_terminal_acceleration_constraint:
             # Zero endpoint acceleration <=> first/last three control points colinear-at-rest.
             c = self.prog.AddLinearConstraint(
-                pd.eq(self.untimed_segments[0].points[0], self.untimed_segments[0].points[2]))
+                pd.eq(self.untimed_segments[0].points[0], self.untimed_segments[0].points[2])
+            )
             c.evaluator().set_description("boundary_initial_acceleration_zero")
             c = self.prog.AddLinearConstraint(
-                pd.eq(self.untimed_segments[-1].points[-1], self.untimed_segments[-1].points[-3]))
+                pd.eq(self.untimed_segments[-1].points[-1], self.untimed_segments[-1].points[-3])
+            )
             c.evaluator().set_description("boundary_terminal_acceleration_zero")
 
     # ------------------------------------------------------------------ solve
@@ -407,20 +430,17 @@ class TrajectoryUpdater:
             self._add_plane_constraint(segment_id, obs_id, a_curve, b_curve, tol)
 
         result = self.solver.Solve(self.prog, solver_options=self._solver_opts)
-        if result.get_solution_result() == pd.SolutionResult.kSolverSpecificError:
-            # Clarabel occasionally reports a spurious solver error; one retry
-            # on the unchanged program reliably clears it.
-            result = self.solver.Solve(self.prog, solver_options=self._solver_opts)
         if not result.is_success():
-            raise RuntimeError(
-                f"Trajectory update failed: {result.get_solution_result()}")
+            raise RuntimeError(f"Trajectory update failed: {result.get_solution_result()}")
 
         details: pd.ClarabelSolverDetails = result.get_solver_details()
         segment_time = float(np.sqrt(result.GetSolution(self.T_powers)[2]))
         segments = [
-            pb.BezierCurve(result.GetSolution(seg.points),
-                           initial_time=seg_id / self.N,
-                           final_time=(seg_id + 1) / self.N)
+            pb.BezierCurve(
+                result.GetSolution(seg.points),
+                initial_time=seg_id / self.N,
+                final_time=(seg_id + 1) / self.N,
+            )
             for seg_id, seg in enumerate(self.untimed_segments)
         ]
         trajectory = pb.CompositeBezierCurve(segments)
@@ -438,8 +458,8 @@ class TrajectoryUpdater:
             c = self.prog.AddLinearConstraint(pd.le(prod.points.flatten(), tol))
         else:
             A_mat, ub_vec = _plane_constraint_matrix(
-                a_curve.points, b_curve.points.flatten(),
-                self.degree, plane_degree, tol)
+                a_curve.points, b_curve.points.flatten(), self.degree, plane_degree, tol
+            )
             lb = np.full(len(ub_vec), -np.inf)
             c = self.prog.AddLinearConstraint(A_mat, lb, ub_vec, self._seg_vars_flat[segment_id])
         c.evaluator().set_description(f"plane_obs{obs_id}_seg{segment_id}")

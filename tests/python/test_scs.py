@@ -9,12 +9,9 @@ import numpy as np
 import pydrake.all as pd
 import pytest
 
-from pybmt import SCSPlanner, SCSResult, solve_scs_minimum_time
+from pybmt import EISCSPlanner, SCSResult, solve_scs_minimum_time
 from pybmt.collisions import intersect_with_hpolyhedra
-from pybmt.regions import (
-    add_segment_splitting_hyperplanes,
-    construct_regions_from_obstacles,
-)
+from pybmt.regions import add_segment_splitting_hyperplanes, construct_regions_from_obstacles
 
 
 def box(lb, ub):
@@ -35,6 +32,7 @@ def sample(curve, n=600):
 
 # --- region construction unit tests -----------------------------------------
 
+
 def test_regions_no_obstacles_are_the_domain():
     domain = box([-5, -5], [5, 5])
     path = np.array([[-2.0, 0.0], [0.0, 0.0], [2.0, 0.0]])
@@ -52,8 +50,7 @@ def test_regions_contain_their_segment_endpoints():
     regions = construct_regions_from_obstacles(path, [obstacle], domain, margin=1e-3)
     for j, r in enumerate(regions):
         for wp in (path[j], path[j + 1]):
-            assert np.all(r.A() @ wp - r.b() <= 1e-6), \
-                f"region {j} excludes a segment endpoint"
+            assert np.all(r.A() @ wp - r.b() <= 1e-6), f"region {j} excludes a segment endpoint"
 
 
 def test_regions_separate_the_obstacle():
@@ -79,18 +76,17 @@ def test_splitting_makes_non_adjacent_regions_disjoint():
 
 # --- end-to-end planner tests ------------------------------------------------
 
+
 def test_obstacle_free_straight_path():
     dim = 2
     v, a = vel_acc(dim)
     domain = box([-5, -5], [5, 5])
     path = np.array([[-2.0, 0.0], [0.0, 0.0], [2.0, 0.0]])
-    res = SCSPlanner().solve(path, [], domain, v, a)
+    res = EISCSPlanner().solve(path, [], domain, v, a)
 
     assert isinstance(res, SCSResult)
-    np.testing.assert_allclose(
-        res.trajectory(res.trajectory.initial_time), path[0], atol=1e-4)
-    np.testing.assert_allclose(
-        res.trajectory(res.trajectory.final_time), path[-1], atol=1e-4)
+    np.testing.assert_allclose(res.trajectory(res.trajectory.initial_time), path[0], atol=1e-4)
+    np.testing.assert_allclose(res.trajectory(res.trajectory.final_time), path[-1], atol=1e-4)
     assert res.total_time > 0
     assert res.timing["total"] > 0
 
@@ -116,7 +112,7 @@ def test_avoids_obstacle_with_routed_path():
     obstacle = box([-0.5, -0.6], [0.5, 0.6])
     # Seed waypoints route above the box top (y = 0.6).
     path = np.array([[-2.0, 0.0], [0.0, 1.2], [2.0, 0.0]])
-    res = SCSPlanner().solve(path, [obstacle], domain, v, a)
+    res = EISCSPlanner().solve(path, [obstacle], domain, v, a)
 
     hits = intersect_with_hpolyhedra(res.trajectory, [obstacle], tol=1e-3)
     assert hits == {}, f"trajectory collides with obstacle: {hits}"
@@ -128,10 +124,9 @@ def test_polygonal_solver_type():
     v, a = vel_acc(dim)
     domain = box([-5, -5], [5, 5])
     path = np.array([[-2.0, 0.0], [0.0, 0.0], [2.0, 0.0]])
-    res = SCSPlanner(solver_type="polygonal").solve(path, [], domain, v, a)
+    res = EISCSPlanner(solver_type="polygonal").solve(path, [], domain, v, a)
     assert res.solver_type == "polygonal"
-    np.testing.assert_allclose(
-        res.trajectory(res.trajectory.final_time), path[-1], atol=1e-4)
+    np.testing.assert_allclose(res.trajectory(res.trajectory.final_time), path[-1], atol=1e-4)
 
 
 def test_rejects_non_hpolyhedron_domain():
@@ -140,9 +135,9 @@ def test_rejects_non_hpolyhedron_domain():
     domain = pd.Hyperellipsoid.MakeHypersphere(5.0, np.zeros(dim))
     path = np.array([[-2.0, 0.0], [2.0, 0.0]])
     with pytest.raises(ValueError, match="HPolyhedron"):
-        SCSPlanner().solve(path, [], domain, v, a)
+        EISCSPlanner().solve(path, [], domain, v, a)
 
 
 def test_rejects_unknown_solver_type():
     with pytest.raises(ValueError, match="solver_type"):
-        SCSPlanner(solver_type="bogus")
+        EISCSPlanner(solver_type="bogus")

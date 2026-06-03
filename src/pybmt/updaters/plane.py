@@ -65,16 +65,20 @@ def _build_plane_objective_matrix(
     for i in range(n_out):
         for j in range(max(0, i - n), min(m, i) + 1):
             k = i - j
-            coeff = float(_comb(m, j, exact=True) * _comb(n, k, exact=True)
-                          / _comb(prod_d, i, exact=True))
-            A_a[i, j * dim:(j + 1) * dim] = coeff * r_points[k]
+            coeff = float(
+                _comb(m, j, exact=True) * _comb(n, k, exact=True) / _comb(prod_d, i, exact=True)
+            )
+            A_a[i, j * dim : (j + 1) * dim] = coeff * r_points[k]
 
     elev_d = n
     A_b = np.zeros((n_out, m + 1))
     for i in range(n_out):
         for j in range(max(0, i - elev_d), min(m, i) + 1):
-            A_b[i, j] = float(_comb(m, j, exact=True) * _comb(elev_d, i - j, exact=True)
-                              / _comb(prod_d, i, exact=True))
+            A_b[i, j] = float(
+                _comb(m, j, exact=True)
+                * _comb(elev_d, i - j, exact=True)
+                / _comb(prod_d, i, exact=True)
+            )
 
     A_full = np.hstack([A_a, A_b, -np.ones((n_out, 1))])
     return A_full, np.full(n_out, -np.inf), np.zeros(n_out)
@@ -132,8 +136,13 @@ class PlaneUpdater:
         a_cps, b_cps = [], []
         for cp_id in range(self.plane_degree + 1):
             a_var, b_var = add_supporting_plane(
-                prog, obs, f"o{obs_id}_cp{cp_id}",
-                norm_val=1, restrict_norm=True, step_back=self.plane_to_obstacle_tol)
+                prog,
+                obs,
+                f"o{obs_id}_cp{cp_id}",
+                norm_val=1,
+                restrict_norm=True,
+                step_back=self.plane_to_obstacle_tol,
+            )
             a_cps.append(a_var)
             b_cps.append(b_var.flatten())
 
@@ -155,9 +164,7 @@ class PlaneUpdater:
         """
         segments = trajectory.curves
         pairs = [
-            (seg_id, obs_id)
-            for seg_id, obs_ids in tagged_obstacles.items()
-            for obs_id in obs_ids
+            (seg_id, obs_id) for seg_id, obs_ids in tagged_obstacles.items() for obs_id in obs_ids
         ]
         if not pairs:
             return {}
@@ -171,7 +178,8 @@ class PlaneUpdater:
             r_pts = np.asarray(segments[seg_id].points, dtype=float)
             traj_degree = len(r_pts) - 1
             A_full, lb, ub = _build_plane_objective_matrix(
-                r_pts, self.plane_degree, traj_degree, self.dim)
+                r_pts, self.plane_degree, traj_degree, self.dim
+            )
 
             margin = clone.NewContinuousVariables(1, "margin")
             clone.AddLinearConstraint(A_full, lb, ub, np.concatenate([a_flat, b_flat, margin]))
@@ -187,7 +195,8 @@ class PlaneUpdater:
             if not result.is_success():
                 raise RuntimeError(
                     f"Plane LP failed for seg={seg_id} obs={obs_id}: "
-                    f"{result.get_solution_result()}")
+                    f"{result.get_solution_result()}"
+                )
             # A negative optimal margin means the plane strictly separates the
             # (feasible) trajectory from the obstacle. A clearly positive margin
             # means no separating plane exists at this degree — usually because
@@ -198,7 +207,8 @@ class PlaneUpdater:
                     f"No separating plane for seg={seg_id} obs={obs_id} "
                     f"(best margin={result.get_optimal_cost():.3e} > 0). The "
                     f"trajectory may not be collision-free, or try a higher "
-                    f"plane_degree.")
+                    f"plane_degree."
+                )
             r = segments[seg_id]
             a_sol = result.GetSolution(a_flat).reshape(self.plane_degree + 1, self.dim)
             b_sol = result.GetSolution(b_flat).reshape(-1, 1)

@@ -62,11 +62,10 @@ def get_conic_description(
         dim = obstacle.ambient_dimension()
         A_conic = np.zeros((2 * dim + P.shape[1] + 2, dim))
         A_conic[:dim, :dim] = np.eye(dim)
-        A_conic[dim:2 * dim, :dim] = -np.eye(dim)
+        A_conic[dim : 2 * dim, :dim] = -np.eye(dim)
         B_conic = np.concatenate(
-            (-P, P, np.eye(P.shape[1]),
-             np.ones((1, P.shape[1])), -np.ones((1, P.shape[1]))),
-            axis=0)
+            (-P, P, np.eye(P.shape[1]), np.ones((1, P.shape[1])), -np.ones((1, P.shape[1]))), axis=0
+        )
         b_conic = np.zeros((2 * dim + P.shape[1] + 2,))
         b_conic[-2] = -1
         b_conic[-1] = 1

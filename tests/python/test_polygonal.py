@@ -53,8 +53,7 @@ def test_single_segment_hits_endpoints(vel_acc_2d):
 
 def test_segment_respects_velocity_and_acceleration(vel_acc_2d):
     v, a = vel_acc_2d
-    curve = solve_segment_time_optimal(
-        np.array([0.0, 0.0]), np.array([2.0, 1.0]), v, a, degree=6)
+    curve = solve_segment_time_optimal(np.array([0.0, 0.0]), np.array([2.0, 1.0]), v, a, degree=6)
     vdot = curve.derivative()
     vddot = vdot.derivative()
     _, vs = sample(vdot)
@@ -66,8 +65,7 @@ def test_segment_respects_velocity_and_acceleration(vel_acc_2d):
 
 def test_segment_starts_and_ends_at_rest(vel_acc_2d):
     v, a = vel_acc_2d
-    curve = solve_segment_time_optimal(
-        np.array([0.0, 0.0]), np.array([1.0, 1.0]), v, a, degree=6)
+    curve = solve_segment_time_optimal(np.array([0.0, 0.0]), np.array([1.0, 1.0]), v, a, degree=6)
     vdot = curve.derivative()
     np.testing.assert_allclose(vdot(curve.initial_time), [0, 0], atol=1e-6)
     np.testing.assert_allclose(vdot(curve.final_time), [0, 0], atol=1e-6)
@@ -92,7 +90,8 @@ def test_force_same_segment_time(vel_acc_2d):
     v, a = vel_acc_2d
     # Segments of clearly different length -> different natural durations.
     wps = np.array([[0.0, 0.0], [0.2, 0.0], [3.0, 0.0]])
-    traj = PolygonalInitializer(
-        v, a, trajectory_degree=6, force_same_segment_time=True).initialize(wps)
+    traj = PolygonalInitializer(v, a, trajectory_degree=6, force_same_segment_time=True).initialize(
+        wps
+    )
     durations = [c.final_time - c.initial_time for c in traj.curves]
     assert durations[0] == pytest.approx(durations[1], rel=1e-9)

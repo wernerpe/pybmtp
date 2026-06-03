@@ -36,7 +36,9 @@ from .result import SolveResult
 from .updaters import PlaneUpdater, TrajectoryUpdater
 
 
-def _merge_tagged(cumulative: Dict[int, List[int]], new: Dict[int, List[int]]) -> Dict[int, List[int]]:
+def _merge_tagged(
+    cumulative: Dict[int, List[int]], new: Dict[int, List[int]]
+) -> Dict[int, List[int]]:
     """Union ``new`` collision tags into the cumulative tag map."""
     merged = {k: list(v) for k, v in cumulative.items()}
     for seg, obs in new.items():
@@ -91,7 +93,8 @@ class MinimumTimePlanner:
     ):
         assert trajectory_degree >= 5, (
             "trajectory_degree must be >= 5 to satisfy zero boundary velocity "
-            "and acceleration at both ends")
+            "and acceleration at both ends"
+        )
         self.trajectory_degree = trajectory_degree
         self.plane_degree = plane_degree
         self.rel_term = rel_term
@@ -122,7 +125,8 @@ class MinimumTimePlanner:
 
         # --- warm start: constraint-feasible polygonal trajectory ------------
         init = PolygonalInitializer(
-            velocity_set, acceleration_set,
+            velocity_set,
+            acceleration_set,
             trajectory_degree=self.trajectory_degree,
             force_same_segment_time=True,
         ).initialize(path)
@@ -132,14 +136,20 @@ class MinimumTimePlanner:
         r_feasible = _retime_normalized(init, num_segments)
 
         traj_updater = TrajectoryUpdater(
-            path[0], path[-1], domain, num_segments,
-            velocity_set, acceleration_set, degree=self.trajectory_degree,
+            path[0],
+            path[-1],
+            domain,
+            num_segments,
+            velocity_set,
+            acceleration_set,
+            degree=self.trajectory_degree,
             add_terminal_velocity_constraint=self.add_terminal_velocity_constraint,
             add_terminal_acceleration_constraint=self.add_terminal_acceleration_constraint,
             add_c2_continuity=self.add_c2_continuity,
         )
         plane_updater = PlaneUpdater(
-            obstacles, self.plane_degree, plane_to_obstacle_tol=self.plane_to_obstacle_tol)
+            obstacles, self.plane_degree, plane_to_obstacle_tol=self.plane_to_obstacle_tol
+        )
 
         new_planes: Dict[Tuple[int, int], Tuple[pb.BezierCurve, pb.BezierCurve]] = {}
         all_planes: Dict[Tuple[int, int], Tuple[pb.BezierCurve, pb.BezierCurve]] = {}
@@ -150,8 +160,9 @@ class MinimumTimePlanner:
         feasible_segment_times = [segment_time_init]
         feasible_wall_times = [0.0]
 
-        timing = dict(trajectory_update=0.0, trajectory_solver=0.0,
-                      collision_check=0.0, plane_update=0.0)
+        timing = dict(
+            trajectory_update=0.0, trajectory_solver=0.0, collision_check=0.0, plane_update=0.0
+        )
         converged = False
         iterations = 0
 
@@ -163,14 +174,16 @@ class MinimumTimePlanner:
             #    trajectory away from the plane.
             t0 = time.time()
             r_cand, segment_time, _, solver_time = traj_updater.solve(
-                new_planes, tol=-self.trajectory_to_plane_tol)
+                new_planes, tol=-self.trajectory_to_plane_tol
+            )
             timing["trajectory_update"] += time.time() - t0
             timing["trajectory_solver"] += solver_time
 
             # 2. Collision check (ignore already-tagged pairs — planes cover them).
             t0 = time.time()
             new_tagged = intersect_with_hpolyhedra(
-                r_cand, obstacles, ignore=tagged, tol=self.collision_check_tol)
+                r_cand, obstacles, ignore=tagged, tol=self.collision_check_tol
+            )
             tagged = _merge_tagged(tagged, new_tagged)
             timing["collision_check"] += time.time() - t0
 
@@ -186,8 +199,10 @@ class MinimumTimePlanner:
                 feasible_trajectories.append(r_cand)
                 feasible_wall_times.append(time.time() - t_start)
                 if verbose:
-                    print(f"[pybmt] feasible: T={segment_time * num_segments:.3f}s "
-                          f"rel_improvement={rel_improvement:.4f}")
+                    print(
+                        f"[pybmt] feasible: T={segment_time * num_segments:.3f}s "
+                        f"rel_improvement={rel_improvement:.4f}"
+                    )
                 if rel_improvement < self.rel_term:
                     converged = True
                     timing["plane_update"] += time.time() - t0
@@ -205,10 +220,12 @@ class MinimumTimePlanner:
         # Time-scale the final feasible trajectory into physical seconds.
         r_sol = feasible_trajectories[-1]
         T_sol = feasible_segment_times[-1]
-        trajectory = pb.CompositeBezierCurve([
-            pb.BezierCurve(s.points, i * T_sol, (i + 1) * T_sol)
-            for i, s in enumerate(r_sol.curves)
-        ])
+        trajectory = pb.CompositeBezierCurve(
+            [
+                pb.BezierCurve(s.points, i * T_sol, (i + 1) * T_sol)
+                for i, s in enumerate(r_sol.curves)
+            ]
+        )
         timing["total"] = time.time() - t_start
 
         return SolveResult(
@@ -225,12 +242,16 @@ class MinimumTimePlanner:
         )
 
 
-def _retime_normalized(curve: pb.CompositeBezierCurve, num_segments: int) -> pb.CompositeBezierCurve:
+def _retime_normalized(
+    curve: pb.CompositeBezierCurve, num_segments: int
+) -> pb.CompositeBezierCurve:
     """Re-time a composite curve onto the uniform [seg/N, (seg+1)/N] grid."""
-    return pb.CompositeBezierCurve([
-        pb.BezierCurve(c.points, i / num_segments, (i + 1) / num_segments)
-        for i, c in enumerate(curve.curves)
-    ])
+    return pb.CompositeBezierCurve(
+        [
+            pb.BezierCurve(c.points, i / num_segments, (i + 1) / num_segments)
+            for i, c in enumerate(curve.curves)
+        ]
+    )
 
 
 def solve_minimum_time(
@@ -248,4 +269,5 @@ def solve_minimum_time(
     constructor (e.g. ``trajectory_degree``, ``rel_term``, ``max_iter``).
     """
     return MinimumTimePlanner(**planner_kwargs).solve(
-        path, obstacles, domain, velocity_set, acceleration_set, verbose=verbose)
+        path, obstacles, domain, velocity_set, acceleration_set, verbose=verbose
+    )

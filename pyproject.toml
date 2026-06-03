@@ -60,6 +60,13 @@ cmake.args = ["-DPYBMT_BUILD_PYTHON=ON", "-DPYBMT_BUILD_TESTS=OFF"]
 [tool.scikit-build.cmake.define]
 CMAKE_BUILD_TYPE = "Release"
 
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
 [tool.pytest.ini_options]
 testpaths = ["tests/python"]
 # numpy emits RuntimeWarnings when it evaluates object-dtype arrays of Drake

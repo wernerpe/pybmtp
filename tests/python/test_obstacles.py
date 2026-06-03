@@ -21,15 +21,16 @@ from pybmt.collisions import (
 
 def _line(p, q, degree=6, t0=0.0, t1=1.0):
     s = np.linspace(0.0, 1.0, degree + 1)[:, None]
-    return pb.BezierCurve((1 - s) * np.asarray(p, float) + s * np.asarray(q, float),
-                          t0, t1)
+    return pb.BezierCurve((1 - s) * np.asarray(p, float) + s * np.asarray(q, float), t0, t1)
 
 
 def _two_segment_x_axis():
-    return pb.CompositeBezierCurve([
-        _line([-2, 0], [0, 0], t0=0.0, t1=1.0),
-        _line([0, 0], [2, 0], t0=1.0, t1=2.0),
-    ])
+    return pb.CompositeBezierCurve(
+        [
+            _line([-2, 0], [0, 0], t0=0.0, t1=1.0),
+            _line([0, 0], [2, 0], t0=1.0, t1=2.0),
+        ]
+    )
 
 
 def _box(lb, ub):
@@ -67,12 +68,11 @@ def test_ignore_uses_global_indices():
     curve = _two_segment_x_axis()
     obstacles = [
         pd.Hyperellipsoid.MakeHypersphere(0.1, np.array([0.0, 5.0])),  # 0
-        _box([-0.5, -0.5], [0.5, 0.5]),                                # 1 (box hit)
+        _box([-0.5, -0.5], [0.5, 0.5]),  # 1 (box hit)
         pd.Hyperellipsoid.MakeHypersphere(0.6, np.array([0.0, 0.5])),  # 2 (sphere hit)
     ]
     # Ignore the sphere (global idx 2) on both segments; the box (1) remains.
-    hits = intersect_with_obstacles(
-        curve, obstacles, ignore={0: [2], 1: [2]}, tol=1e-3)
+    hits = intersect_with_obstacles(curve, obstacles, ignore={0: [2], 1: [2]}, tol=1e-3)
     assert hits == {0: [1], 1: [1]}
 
 

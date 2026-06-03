@@ -4,7 +4,7 @@ Given a sequence of waypoints, this connects consecutive pairs with
 minimum-time Bezier segments that respect velocity and acceleration limits,
 producing a constraint-feasible polygonal trajectory. It is the warm start that
 seeds the biconvex planners (:class:`~pybmt.MinimumTimePlanner`,
-:class:`~pybmt.SCSPlanner`).
+:class:`~pybmt.EISCSPlanner`).
 
 Each segment is a straight line in space, so the per-segment problem collapses
 to a 1D minimum-time program along the segment direction: project the velocity
@@ -79,8 +79,7 @@ class PolygonalInitializer:
                 zero_boundary_acceleration=self.zero_boundary_acceleration,
             )
             if curve is None:
-                raise RuntimeError(
-                    f"failed to solve minimum-time segment {start} -> {end}")
+                raise RuntimeError(f"failed to solve minimum-time segment {start} -> {end}")
             curves.append(curve)
 
         if self.force_same_segment_time:
@@ -127,7 +126,7 @@ def solve_segment_time_optimal(
 
     # Project the (multi-dim) velocity/acceleration sets onto the 1D direction.
     v_max = compute_set_limit(u_dir, velocity_set)
-    a_max = compute_set_limit(u_dir, acceleration_set)    # forward (accelerate)
+    a_max = compute_set_limit(u_dir, acceleration_set)  # forward (accelerate)
     a_min = -compute_set_limit(-u_dir, acceleration_set)  # backward (brake)
 
     prog = pd.MathematicalProgram()

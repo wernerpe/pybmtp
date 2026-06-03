@@ -1,5 +1,8 @@
 # PyBMT: Biconvex Minimum-time Trajectory Planning Around Convex Obstacles
 
+[![CI](https://github.com/wernerpe/pybmt/actions/workflows/ci.yml/badge.svg)](https://github.com/wernerpe/pybmt/actions/workflows/ci.yml)
+[![Lint](https://github.com/wernerpe/pybmt/actions/workflows/lint.yaml/badge.svg)](https://github.com/wernerpe/pybmt/actions/workflows/lint.yaml)
+
 Software accompanying the paper. More details to follow.
 
 `pybmt` plans time-optimal Bezier trajectories that respect velocity and
@@ -10,7 +13,7 @@ acceleration limits while avoiding convex obstacles. The software contains three
   parallel Bezier collision check between them.
 - **`PolygonalInitializer`** — a fast constraint-respecting polygonal warm start
   used to seed the biconvex planners.
-- **`SCSPlanner`** — Combination of Edge-Inflation for convex obstacles paired with SCSPlanning as used in the paper.
+- **`EISCSPlanner`** — Combination of Edge-Inflation for convex obstacles paired with SCSPlanning as used in the paper.
 
 The Bezier collision check is a small C++ extension built on Eigen, with
 optional OpenMP parallelism.

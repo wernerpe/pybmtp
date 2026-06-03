@@ -69,8 +69,7 @@ def construct_regions_from_obstacles(
     dim = path.shape[1]
 
     if not obstacles:
-        return [pd.HPolyhedron(domain.A().copy(), domain.b().copy())
-                for _ in range(num_segments)]
+        return [pd.HPolyhedron(domain.A().copy(), domain.b().copy()) for _ in range(num_segments)]
 
     # Quadratic cost ||p_obs - p_seg||^2 in x = [p_obs; p_seg; t]. Drake uses
     # the 1/2 x'Q x + b'x convention, so the coefficients are doubled.
@@ -91,7 +90,7 @@ def construct_regions_from_obstacles(
 
             # p_seg = path_a + t d  <=>  [I | -d] @ [p_seg; t] = path_a.
             A_eq = np.zeros((dim, 2 * dim + 1))
-            A_eq[:, dim:2 * dim] = np.eye(dim)
+            A_eq[:, dim : 2 * dim] = np.eye(dim)
             A_eq[:, 2 * dim] = -d
             prog.AddLinearEqualityConstraint(A_eq, path_a, x)
 
@@ -112,10 +111,11 @@ def construct_regions_from_obstacles(
         if not result.is_success():
             raise RuntimeError(
                 f"Region generation QP failed for segment {j}, obstacle "
-                f"{obs_id}: {result.get_solution_result()}")
+                f"{obs_id}: {result.get_solution_result()}"
+            )
 
         x_sol = result.GetSolution(x)
-        p_obs, p_seg = x_sol[:dim], x_sol[dim:2 * dim]
+        p_obs, p_seg = x_sol[:dim], x_sol[dim : 2 * dim]
         diff = p_obs - p_seg
         dist = float(np.linalg.norm(diff))
         if dist <= 1e-6:
@@ -180,13 +180,13 @@ def add_segment_splitting_hyperplanes(
 
         A_i, b_i = new_regions[i].A(), new_regions[i].b()
         new_regions[i] = pd.HPolyhedron(
-            np.vstack([A_i, n.reshape(1, -1)]),
-            np.concatenate([b_i, [c - split_margin]]))
+            np.vstack([A_i, n.reshape(1, -1)]), np.concatenate([b_i, [c - split_margin]])
+        )
 
         A_i2, b_i2 = new_regions[i + 2].A(), new_regions[i + 2].b()
         new_regions[i + 2] = pd.HPolyhedron(
-            np.vstack([A_i2, (-n).reshape(1, -1)]),
-            np.concatenate([b_i2, [-(c + split_margin)]]))
+            np.vstack([A_i2, (-n).reshape(1, -1)]), np.concatenate([b_i2, [-(c + split_margin)]])
+        )
 
     tol = split_margin
     for k, region in enumerate(new_regions):
@@ -198,6 +198,7 @@ def add_segment_splitting_hyperplanes(
                     f"add_segment_splitting_hyperplanes: region {k} no longer "
                     f"contains its {label} waypoint (orig segment {seg_idx}, "
                     f"residual={residual:+.3e} > tol={tol:.0e}). Path likely "
-                    f"backtracks past its successor's midpoint.")
+                    f"backtracks past its successor's midpoint."
+                )
 
     return new_regions

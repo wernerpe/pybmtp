@@ -8,13 +8,8 @@ conservative guarantee (no false "collision-free") holds on sampled points.
 import numpy as np
 import pybezier as pb
 import pydrake.all as pd
-import pytest
 
-from pybmt.collisions import (
-    curve_is_collision_free,
-    intersect_with_hpolyhedra,
-    to_native_composite,
-)
+from pybmt.collisions import curve_is_collision_free, intersect_with_hpolyhedra, to_native_composite
 
 
 def box(lb, ub):
@@ -64,14 +59,15 @@ def test_composite_maps_segments_and_honors_ignore():
 
     obs = [
         box([-1.2, -0.5], [-0.8, 0.5]),  # sits on seg0
-        box([5, 5], [6, 6]),             # far away
+        box([5, 5], [6, 6]),  # far away
     ]
 
     hits = intersect_with_hpolyhedra(curve, obs, tol=1e-3, parallelize=False)
     assert hits == {0: [0]}
 
     hits_ignored = intersect_with_hpolyhedra(
-        curve, obs, ignore={0: [0]}, tol=1e-3, parallelize=False)
+        curve, obs, ignore={0: [0]}, tol=1e-3, parallelize=False
+    )
     assert hits_ignored == {}
 
 

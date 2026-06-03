@@ -51,6 +51,32 @@ jobs:
       - name: Run Python tests
         run: pytest -q
 
+  # Smoke-test the examples end to end (headless) against the installed package.
+  examples:
+    name: examples smoke test on ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system build deps
+        run: sudo apt-get update && sudo apt-get install -y libeigen3-dev libomp-dev
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          # matplotlib is an examples-only dependency (figure rendering).
+          pip install . matplotlib
+
+      - name: Run examples (both planners, headless)
+        run: |
+          python examples/box_obstacles_2d.py
+          python examples/dual_arm_unload.py --planner bcp --no-meshcat
+          python examples/dual_arm_unload.py --planner scs --no-meshcat
+
   # Build and run the native gtest target (Bezier collision kernel) on Linux.
   native:
     name: native gtest on ubuntu-latest

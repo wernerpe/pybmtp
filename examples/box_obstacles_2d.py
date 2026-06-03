@@ -8,7 +8,7 @@ that stays clear of the obstacles.
 It solves the scene with both planners and overlays them on one figure:
 
   * ``bcp`` — the biconvex ``MinimumTimePlanner``.
-  * ``scs`` — the ``SCSPlanner`` baseline (convex regions + scsplanning, with
+  * ``scs`` — the ``EISCSPlanner`` baseline (convex regions + scsplanning, with
     Assumption-1 splitting planes added between non-adjacent regions).
 
 Run it (renders to ``examples/_out/box_obstacles_2d.png``):
@@ -26,7 +26,7 @@ import time
 import numpy as np
 import pydrake.all as pd
 
-from pybmt import MinimumTimePlanner, PolygonalInitializer, SCSPlanner
+from pybmt import EISCSPlanner, MinimumTimePlanner, PolygonalInitializer
 from pybmt.collisions import intersect_with_hpolyhedra
 
 
@@ -50,10 +50,17 @@ def build_scene():
         obstacle_boxes.append((lb, ub))
         obstacles.append(pd.HPolyhedron.MakeBox(lb, ub))
 
-    waypoints = np.array([
-        [1.0, 1.0], [1.0, 3.0], [9.5, 3.0], [9.5, 7.0],
-        [3.0, 7.0], [3.0, 9.0], [9.0, 9.0],
-    ])
+    waypoints = np.array(
+        [
+            [1.0, 1.0],
+            [1.0, 3.0],
+            [9.5, 3.0],
+            [9.5, 7.0],
+            [3.0, 7.0],
+            [3.0, 9.0],
+            [9.0, 9.0],
+        ]
+    )
 
     vel_set = pd.Hyperellipsoid.MakeHypersphere(10.0, np.zeros(2))
     acc_set = pd.Hyperellipsoid.MakeHypersphere(30.0, np.zeros(2))
@@ -63,6 +70,7 @@ def build_scene():
 def render(path_out, obstacle_boxes, waypoints, seed_curve, opt_curves, title):
     """``opt_curves`` is a list of ``(label, curve, color)`` to overlay."""
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.patches as mpatches
     import matplotlib.pyplot as plt
@@ -73,25 +81,46 @@ def render(path_out, obstacle_boxes, waypoints, seed_curve, opt_curves, title):
     ax.set_ylim(0, 10)
 
     for lb, ub in obstacle_boxes:
-        ax.add_patch(mpatches.Rectangle(
-            lb, ub[0] - lb[0], ub[1] - lb[1],
-            facecolor="lightcoral", edgecolor="k", linewidth=1.5, zorder=5))
+        ax.add_patch(
+            mpatches.Rectangle(
+                lb,
+                ub[0] - lb[0],
+                ub[1] - lb[1],
+                facecolor="lightcoral",
+                edgecolor="k",
+                linewidth=1.5,
+                zorder=5,
+            )
+        )
 
-    seed = np.array([seed_curve(t) for t in np.linspace(
-        seed_curve.initial_time, seed_curve.final_time, 200)])
-    ax.plot(seed[:, 0], seed[:, 1], color="k", linewidth=1.5,
-            linestyle="--", label="seed path", zorder=8)
+    seed = np.array(
+        [seed_curve(t) for t in np.linspace(seed_curve.initial_time, seed_curve.final_time, 200)]
+    )
+    ax.plot(
+        seed[:, 0],
+        seed[:, 1],
+        color="k",
+        linewidth=1.5,
+        linestyle="--",
+        label="seed path",
+        zorder=8,
+    )
     ax.scatter(waypoints[:, 0], waypoints[:, 1], color="k", s=40, zorder=9)
 
     for label, curve, color in opt_curves:
-        opt = np.array([curve(t) for t in np.linspace(
-            curve.initial_time, curve.final_time, 400)])
-        ax.plot(opt[:, 0], opt[:, 1], color=color, linewidth=2.5,
-                label=label, zorder=10)
+        opt = np.array([curve(t) for t in np.linspace(curve.initial_time, curve.final_time, 400)])
+        ax.plot(opt[:, 0], opt[:, 1], color=color, linewidth=2.5, label=label, zorder=10)
 
     ax.scatter([waypoints[0, 0]], [waypoints[0, 1]], color="k", s=160, zorder=11)
-    ax.scatter([waypoints[-1, 0]], [waypoints[-1, 1]], marker="*",
-               color="gold", edgecolor="k", s=420, zorder=11)
+    ax.scatter(
+        [waypoints[-1, 0]],
+        [waypoints[-1, 1]],
+        marker="*",
+        color="gold",
+        edgecolor="k",
+        s=420,
+        zorder=11,
+    )
 
     ax.set_title(title)
     ax.legend(loc="lower right")
@@ -104,38 +133,42 @@ def main():
     domain, obstacles, obstacle_boxes, waypoints, vel_set, acc_set = build_scene()
 
     # A constraint-feasible polygonal warm start, drawn as the dashed seed path.
-    seed_curve = PolygonalInitializer(
-        vel_set, acc_set, force_same_segment_time=True).initialize(waypoints)
+    seed_curve = PolygonalInitializer(vel_set, acc_set, force_same_segment_time=True).initialize(
+        waypoints
+    )
 
     t0 = time.perf_counter()
     bcp = MinimumTimePlanner(
-        rel_term=0.01, max_iter=120,
-        collision_check_tol=1e-3, trajectory_to_plane_tol=1e-3,
+        rel_term=0.01,
+        max_iter=120,
+        collision_check_tol=1e-3,
+        trajectory_to_plane_tol=1e-3,
     ).solve(waypoints, obstacles, domain, vel_set, acc_set, verbose=True)
     bcp_solve_s = time.perf_counter() - t0
 
     t0 = time.perf_counter()
-    scs = SCSPlanner(rel_term=0.01).solve(
-        waypoints, obstacles, domain, vel_set, acc_set, verbose=True)
+    scs = EISCSPlanner(rel_term=0.01).solve(
+        waypoints, obstacles, domain, vel_set, acc_set, verbose=True
+    )
     scs_solve_s = time.perf_counter() - t0
 
-    for name, res, extra in [("BCP", bcp, f"{bcp.num_iterations} iters"),
-                             ("SCS", scs, f"{scs.num_regions} regions")]:
+    for name, res, extra in [
+        ("BCP", bcp, f"{bcp.num_iterations} iters"),
+        ("SCS", scs, f"{scs.num_regions} regions"),
+    ]:
         hits = intersect_with_hpolyhedra(res.trajectory, obstacles, tol=1e-3)
-        print(f"{name}: T={res.total_time:.3f}s ({extra}), "
-              f"collision-free={hits == {}}")
+        print(f"{name}: T={res.total_time:.3f}s ({extra}), " f"collision-free={hits == {}}")
 
     opt_curves = [
-        (f"BCP  (T={bcp.total_time:.2f}s, solve {bcp_solve_s:.2f}s)",
-         bcp.trajectory, "red"),
-        (f"SCS  (T={scs.total_time:.2f}s, solve {scs_solve_s:.2f}s)",
-         scs.trajectory, "tab:blue"),
+        (f"BCP  (T={bcp.total_time:.2f}s, solve {bcp_solve_s:.2f}s)", bcp.trajectory, "red"),
+        (f"SCS  (T={scs.total_time:.2f}s, solve {scs_solve_s:.2f}s)", scs.trajectory, "tab:blue"),
     ]
     out_dir = pathlib.Path(__file__).resolve().parent / "_out"
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / "box_obstacles_2d.png"
-    render(out, obstacle_boxes, waypoints, seed_curve, opt_curves,
-           title="2D box obstacles: BCP vs SCS")
+    render(
+        out, obstacle_boxes, waypoints, seed_curve, opt_curves, title="2D box obstacles: BCP vs SCS"
+    )
     print(f"wrote {out}")
 
 

@@ -42,7 +42,9 @@ class SolveResult:
     total_time: float
     num_iterations: int
     converged: bool
-    planes: Dict[Tuple[int, int], Tuple[pb.BezierCurve, pb.BezierCurve]] = field(default_factory=dict)
+    planes: Dict[Tuple[int, int], Tuple[pb.BezierCurve, pb.BezierCurve]] = field(
+        default_factory=dict
+    )
     feasible_trajectories: List[pb.CompositeBezierCurve] = field(default_factory=list)
     feasible_segment_times: List[float] = field(default_factory=list)
     feasible_wall_times: List[float] = field(default_factory=list)
@@ -51,7 +53,7 @@ class SolveResult:
 
 @dataclass
 class SCSResult:
-    """Outcome of an :class:`~pybmt.scs.SCSPlanner` solve.
+    """Outcome of an :class:`~pybmt.scs.EISCSPlanner` solve.
 
     Attributes
     ----------
