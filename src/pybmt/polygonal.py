@@ -106,6 +106,8 @@ def solve_segment_time_optimal(
     degree: int,
     zero_boundary_acceleration: bool = True,
 ) -> pb.BezierCurve | None:
+    # TODO(pete): Change this from the SCS Polygonal initializer to the BMTP trajupdate with no planes
+
     """Minimum-time Bezier segment along the straight line ``start`` -> ``end``.
 
     Solves the 1D normalized minimum-time program (paper Eq. 17) for the scalar
