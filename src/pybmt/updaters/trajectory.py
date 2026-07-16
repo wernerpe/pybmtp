@@ -156,6 +156,11 @@ class TrajectoryUpdater:
         (rest-to-rest). Defaults to ``J`` (e.g. an acceleration limit gives
         ``r''(0) = r''(1) = 0``). ``0`` leaves the endpoints free apart from
         position. May not exceed ``J``.
+    on_segment:
+        Constrain every control point to the straight ``source -> target`` segment
+        (``cp = z*source + (1-z)*target``, ``0 <= z <= 1``), so the whole curve
+        stays on it. Guarantees a collision-free segment yields a collision-free
+        trajectory (used by the polygonal warm start, where ``num_segments = 1``).
     use_symbolic_constraints:
         Force the readable symbolic constraint path even for HPolyhedron sets.
         Default False (fast matrix path). Mainly for validation/testing.
@@ -171,6 +176,7 @@ class TrajectoryUpdater:
         degree: int = 6,
         continuity_order: Optional[int] = None,
         terminal_order: Optional[int] = None,
+        on_segment: bool = False,
         use_symbolic_constraints: bool = False,
     ):
         self.source = np.asarray(source, float)
@@ -179,6 +185,7 @@ class TrajectoryUpdater:
         self.N = num_segments
         self.degree = degree
         self.domain = domain
+        self.on_segment = on_segment
 
         self.limits = limits
         self.deriv_sets = limits.sets  # [velocity, acceleration, (jerk), (snap)]
@@ -273,12 +280,25 @@ class TrajectoryUpdater:
                 # by the owning (previous) segment's last point.
                 if i == 0:
                     continue
-                self.domain.AddPointInSetConstraints(self.prog, cp)
+                if self.on_segment:
+                    self._constrain_to_segment(cp)
+                else:
+                    self.domain.AddPointInSetConstraints(self.prog, cp)
             self.untimed_segments.append(
                 pb.BezierCurve(np.array(cps), initial_time=0, final_time=1)
             )
 
         self._seg_vars_flat = [seg.points.flatten() for seg in self.untimed_segments]
+
+    def _constrain_to_segment(self, cp) -> None:
+        # Pin a control point onto the source->target line segment:
+        # cp = z*source + (1-z)*target = target + z*(source-target), with 0 <= z <= 1.
+        # With every control point on the segment the Bernstein convex hull keeps the whole
+        # curve on it, so a collision-free segment yields a collision-free trajectory.
+        z = self.prog.NewContinuousVariables(1, "z")[0]
+        self.prog.AddBoundingBoxConstraint(0.0, 1.0, z)
+        A = np.hstack([np.eye(self.dim), -(self.source - self.target).reshape(-1, 1)])
+        self.prog.AddLinearEqualityConstraint(A, self.target, np.concatenate([cp, [z]]))
 
     def _build_boundary_constraints(self) -> None:
         c = self.prog.AddLinearConstraint(pd.eq(self.untimed_segments[0].points[0], self.source))

@@ -61,6 +61,7 @@ def polygonal_initialization(
             degree=degree,
             continuity_order=continuity_order,
             terminal_order=terminal_order,
+            on_segment=True,  # keep the warm start on the (collision-free) waypoint segment
         )
         curve, segment_time, _, _ = updater.solve({})
         control_points.append(curve.curves[0].points)

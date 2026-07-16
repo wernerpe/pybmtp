@@ -81,3 +81,20 @@ def test_velocity_only_warm_start():
     assert len(traj.curves) == 2
     np.testing.assert_allclose(traj(traj.initial_time), [0.0, 0.0], atol=1e-6)
     np.testing.assert_allclose(traj(traj.final_time), [2.0, 1.0], atol=1e-6)
+
+
+def test_stays_on_each_waypoint_segment(limits_2d):
+    # Every segment must lie exactly on the straight line between its waypoints and
+    # stay within it (progress in [0, 1]), so a collision-free polyline yields a
+    # collision-free seed. A skew segment is the interesting case (its free min-time
+    # curve would otherwise bow slightly off the line).
+    wps = np.array([[0.0, 0.0], [2.0, 1.0], [1.0, 3.0]])
+    traj = polygonal_initialization(wps, DOMAIN, limits_2d, degree=6)
+    for seg, a, b in zip(traj.curves, wps[:-1], wps[1:]):
+        ts = np.linspace(seg.initial_time, seg.final_time, 200)
+        xy = np.array([seg(t) for t in ts])
+        u = (b - a) / np.linalg.norm(b - a)
+        perp = xy - a - np.outer((xy - a) @ u, u)
+        progress = ((xy - a) @ u) / np.linalg.norm(b - a)
+        assert np.max(np.linalg.norm(perp, axis=1)) < 1e-9  # on the line
+        assert progress.min() > -1e-9 and progress.max() < 1 + 1e-9  # within the segment
