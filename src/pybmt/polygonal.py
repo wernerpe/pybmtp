@@ -28,6 +28,7 @@ def polygonal_initialization(
     degree: int = 6,
     continuity_order: Optional[int] = None,
     terminal_order: Optional[int] = None,
+    on_segment: bool = True,
     force_same_segment_time: bool = False,
 ) -> pb.CompositeBezierCurve:
     """Straight, rest-to-rest, minimum-time warm start through ``waypoints``.
@@ -38,6 +39,9 @@ def polygonal_initialization(
     optionally acceleration / jerk / snap) and rests at both ends. With
     ``force_same_segment_time`` every segment is stretched to the slowest one's
     duration, yielding the uniform time grid the biconvex updater warm-starts from.
+
+    ``on_segment`` (default) confines each segment to the straight line between its
+    waypoints, so a collision-free input polyline yields a collision-free seed.
 
     ``degree``, ``continuity_order`` and ``terminal_order`` should match the final
     trajectory optimization so the seed satisfies the same constraints.
@@ -61,7 +65,7 @@ def polygonal_initialization(
             degree=degree,
             continuity_order=continuity_order,
             terminal_order=terminal_order,
-            on_segment=True,  # keep the warm start on the (collision-free) waypoint segment
+            on_segment=on_segment,  # keep the warm start on the (collision-free) waypoint segment
         )
         curve, segment_time, _, _ = updater.solve({})
         control_points.append(curve.curves[0].points)
