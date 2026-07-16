@@ -3,7 +3,7 @@ name = "pybmt-examples"
 version = "0"
 description = "Runnable examples for pybmt."
 requires-python = ">=3.10"
-dependencies = ["pybmt", "matplotlib"]
+dependencies = ["pybmt", "matplotlib", "meshcat"]
 
 # A single uv project shared by every script in this directory: `uv run`
 # resolves pybmt from the parent checkout (editable) plus matplotlib, so the
