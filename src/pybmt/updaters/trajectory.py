@@ -311,9 +311,7 @@ class TrajectoryUpdater:
             A_set, b_set = self.deriv_sets[k - 1].A(), self.deriv_sets[k - 1].b()
             fd = _fd_coeffs(k)
             ff = _falling_factorial(d, k)
-            A_row = np.hstack(
-                [ff * fd[j] * A_set for j in range(k + 1)] + [-b_set.reshape(-1, 1)]
-            )
+            A_row = np.hstack([ff * fd[j] * A_set for j in range(k + 1)] + [-b_set.reshape(-1, 1)])
             lb = np.full(A_set.shape[0], -np.inf)
             ub = np.zeros(A_set.shape[0])
             limit_blocks.append((A_row, lb, ub))
@@ -324,9 +322,7 @@ class TrajectoryUpdater:
                 A_row, lb, ub = limit_blocks[k - 1]
                 start, stop = self._derivative_index_range(s_idx, k, n_segs)
                 for i in range(start, stop):
-                    vs = np.concatenate(
-                        [pts[i + j] for j in range(k + 1)] + [[self.T_powers[k]]]
-                    )
+                    vs = np.concatenate([pts[i + j] for j in range(k + 1)] + [[self.T_powers[k]]])
                     c = self.prog.AddLinearConstraint(A_row, lb, ub, vs)
                     c.evaluator().set_description(f"deriv{k}_seg{s_idx}_cp{i}")
 
@@ -343,7 +339,9 @@ class TrajectoryUpdater:
             pts = {"s1": s1.points, "s2": s2.points}
             for k, (A_c, keys) in cont_patterns.items():
                 vars_c = np.concatenate([pts[side][idx] for side, idx in keys])
-                c = self.prog.AddLinearConstraint(A_c, np.zeros(self.dim), np.zeros(self.dim), vars_c)
+                c = self.prog.AddLinearConstraint(
+                    A_c, np.zeros(self.dim), np.zeros(self.dim), vars_c
+                )
                 c.evaluator().set_description(f"C{k}_seg{s_id}_to_{s_id + 1}")
 
     def _continuity_pattern(self, k: int, eye: np.ndarray) -> Tuple[np.ndarray, list]:
@@ -487,7 +485,13 @@ class TrajectoryUpdater:
             raise RuntimeError(f"Trajectory update failed: {result.get_solution_result()}")
 
         details: pd.ClarabelSolverDetails = result.get_solver_details()
-        segment_time = float(np.sqrt(result.GetSolution(self.T_powers)[2]))
+        # Recover T from the minimized top power. The cost is T_powers[J], which the
+        # solver drives tight; the lower powers are only lower-bounded by the rotated-cone
+        # chain and can sit loose. That chain makes T_powers log-convex, so
+        # T_powers[k]**(1/k) is non-decreasing in k -- taking the top, T_powers[J]**(1/J),
+        # gives the largest, i.e. the one value of T that honors every derivative limit.
+        Tp = result.GetSolution(self.T_powers)
+        segment_time = float(Tp[-1] ** (1.0 / self.J))
         segments = [
             pb.BezierCurve(
                 result.GetSolution(seg.points),

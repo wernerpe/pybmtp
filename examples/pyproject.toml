@@ -6,7 +6,7 @@ requires-python = ">=3.10"
 dependencies = ["pybmt", "matplotlib", "meshcat"]
 
 # A single uv project shared by every script in this directory: `uv run`
-# resolves pybmt from the parent checkout (editable) plus matplotlib, so the
-# examples need no per-file dependency metadata.
+# resolves pybmt from the parent checkout (editable) plus matplotlib and meshcat
+# (the village fly-through's viewer), so the examples need no per-file metadata.
 [tool.uv.sources]
 pybmt = { path = "..", editable = true }

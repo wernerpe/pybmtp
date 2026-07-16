@@ -74,7 +74,7 @@ jobs:
       - name: Run examples (both planners, headless)
         run: |
           python examples/box_obstacles_2d.py
-          python examples/dual_arm_unload.py --planner bcp --no-meshcat
+          python examples/dual_arm_unload.py --planner bmtp --no-meshcat
           python examples/dual_arm_unload.py --planner scs --no-meshcat
 
   # Build and run the native gtest target (Bezier collision kernel) on Linux.

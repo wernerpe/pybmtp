@@ -2,7 +2,7 @@
 
 The scene (5 box obstacles in a 10x10 domain) and the 7-waypoint seed path are
 lifted from the original ``mmt_gcs`` ``debug_guiding_example.py``. The seed path
-is collision-free and routes around the obstacles; the BCP planner refines it
+is collision-free and routes around the obstacles; the BMTP planner refines it
 into a minimum-time trajectory.
 
 The test renders the obstacles, the seed path, and the optimized trajectory to a
@@ -123,7 +123,7 @@ def _render(path_out, obstacle_boxes, waypoints, seed_curve, opt_curve, title):
     opt = np.array(
         [opt_curve(t) for t in np.linspace(opt_curve.initial_time, opt_curve.final_time, 400)]
     )
-    ax.plot(opt[:, 0], opt[:, 1], color="red", linewidth=2.5, label="BCP trajectory", zorder=10)
+    ax.plot(opt[:, 0], opt[:, 1], color="red", linewidth=2.5, label="BMTP trajectory", zorder=10)
     ax.scatter([waypoints[0, 0]], [waypoints[0, 1]], color="k", s=160, zorder=11)
     ax.scatter(
         [waypoints[-1, 0]],
@@ -177,7 +177,7 @@ def test_guiding_example_bcp_solves_and_renders():
         waypoints,
         res.feasible_trajectories[0],
         res.trajectory,
-        title=f"BCP guiding example  (T={res.total_time:.2f}s, " f"{res.num_iterations} iters)",
+        title=f"BMTP guiding example  (T={res.total_time:.2f}s, " f"{res.num_iterations} iters)",
     )
     assert out.exists() and out.stat().st_size > 0
     print(f"[guiding-example] wrote {out}")

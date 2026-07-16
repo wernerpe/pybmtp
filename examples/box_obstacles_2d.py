@@ -7,7 +7,7 @@ that stays clear of the obstacles.
 
 It solves the scene with both planners and overlays them on one figure:
 
-  * ``bcp`` — the biconvex ``MinimumTimePlanner``.
+  * ``bmtp`` — the biconvex ``MinimumTimePlanner``.
   * ``scs`` — the ``EISCSPlanner`` baseline (convex regions + scsplanning, with
     Assumption-1 splitting planes added between non-adjacent regions).
 
@@ -26,7 +26,7 @@ import time
 import numpy as np
 import pydrake.all as pd
 
-from pybmt import EISCSPlanner, Limits, MinimumTimePlanner, PolygonalInitializer
+from pybmt import EISCSPlanner, Limits, MinimumTimePlanner, polygonal_initialization
 from pybmt.collisions import intersect_with_hpolyhedra
 
 
@@ -133,18 +133,18 @@ def main():
     domain, obstacles, obstacle_boxes, waypoints, vel_set, acc_set = build_scene()
 
     # A constraint-feasible polygonal warm start, drawn as the dashed seed path.
-    seed_curve = PolygonalInitializer(Limits(vel_set, acc_set), force_same_segment_time=True).initialize(
-        waypoints
+    seed_curve = polygonal_initialization(
+        waypoints, domain, Limits(vel_set, acc_set), force_same_segment_time=True
     )
 
     t0 = time.perf_counter()
-    bcp = MinimumTimePlanner(
+    bmtp = MinimumTimePlanner(
         rel_term=0.01,
         max_iter=120,
         collision_check_tol=1e-3,
         trajectory_to_plane_tol=1e-3,
     ).solve(waypoints, obstacles, domain, Limits(vel_set, acc_set), verbose=True)
-    bcp_solve_s = time.perf_counter() - t0
+    bmtp_solve_s = time.perf_counter() - t0
 
     t0 = time.perf_counter()
     scs = EISCSPlanner(rel_term=0.01).solve(
@@ -153,21 +153,26 @@ def main():
     scs_solve_s = time.perf_counter() - t0
 
     for name, res, extra in [
-        ("BCP", bcp, f"{bcp.num_iterations} iters"),
+        ("BMTP", bmtp, f"{bmtp.num_iterations} iters"),
         ("SCS", scs, f"{scs.num_regions} regions"),
     ]:
         hits = intersect_with_hpolyhedra(res.trajectory, obstacles, tol=1e-3)
         print(f"{name}: T={res.total_time:.3f}s ({extra}), " f"collision-free={hits == {}}")
 
     opt_curves = [
-        (f"BCP  (T={bcp.total_time:.2f}s, solve {bcp_solve_s:.2f}s)", bcp.trajectory, "red"),
+        (f"BMTP  (T={bmtp.total_time:.2f}s, solve {bmtp_solve_s:.2f}s)", bmtp.trajectory, "red"),
         (f"SCS  (T={scs.total_time:.2f}s, solve {scs_solve_s:.2f}s)", scs.trajectory, "tab:blue"),
     ]
     out_dir = pathlib.Path(__file__).resolve().parent / "_out"
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / "box_obstacles_2d.png"
     render(
-        out, obstacle_boxes, waypoints, seed_curve, opt_curves, title="2D box obstacles: BCP vs SCS"
+        out,
+        obstacle_boxes,
+        waypoints,
+        seed_curve,
+        opt_curves,
+        title="2D box obstacles: BMTP vs SCS",
     )
     print(f"wrote {out}")
 

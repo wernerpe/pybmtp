@@ -61,14 +61,16 @@ def test_detours_around_blocking_obstacle():
     dim = 2
     v, a = vel_acc(dim)
     domain = box([-5, -5], [5, 5])
-    # Box squarely on the straight line from start to goal. BCP refines a
+    # Box squarely on the straight line from start to goal. BMTP refines a
     # collision-free polygonal seed; it does not synthesize a detour from a
     # colliding straight line. So the seed waypoints route above the box top
     # (y = 0.6), and the planner tightens that into a minimum-time curve while
     # keeping it on the safe side of the separating planes.
     obstacle = box([-0.5, -0.6], [0.5, 0.6])
     path = np.array([[-2.0, 0.0], [0.0, 1.2], [2.0, 0.0]])
-    res = MinimumTimePlanner(rel_term=0.05, max_iter=80).solve(path, [obstacle], domain, Limits(v, a))
+    res = MinimumTimePlanner(rel_term=0.05, max_iter=80).solve(
+        path, [obstacle], domain, Limits(v, a)
+    )
 
     # Final trajectory must be collision-free against the obstacle.
     hits = intersect_with_hpolyhedra(res.feasible_trajectories[-1], [obstacle], tol=1e-3)
@@ -83,7 +85,9 @@ def test_converges_and_is_monotone_in_feasible_time():
     domain = box([-5, -5], [5, 5])
     obstacle = box([-0.5, -0.6], [0.5, 0.6])
     path = np.array([[-2.0, 0.0], [0.0, 1.2], [2.0, 0.0]])
-    res = MinimumTimePlanner(rel_term=0.05, max_iter=80).solve(path, [obstacle], domain, Limits(v, a))
+    res = MinimumTimePlanner(rel_term=0.05, max_iter=80).solve(
+        path, [obstacle], domain, Limits(v, a)
+    )
 
     assert res.converged
     # Feasible segment times should be non-increasing (planner only accepts

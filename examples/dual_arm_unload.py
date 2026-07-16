@@ -17,7 +17,7 @@ configuration-space HPolyhedron built from box Minkowski sums. The FinRay
 gripper is three axis-aligned boxes per arm; their world dimensions and offsets
 from the grasp point are constants captured at the reference configuration.
 
-Each phase is planned independently with pybmt: ``bcp`` (the biconvex
+Each phase is planned independently with pybmt: ``bmtp`` (the biconvex
 ``MinimumTimePlanner``, default) or ``scs`` (the ``EISCSPlanner`` baseline). The
 script reports per-phase and total minimum time, verifies each phase is
 collision free, renders a top-view + z-profile figure, and publishes a meshcat
@@ -561,7 +561,7 @@ def plan_phase(name, waypoints, is_held, stationary_bricks, planner, vel_set, ac
     )
 
     t0 = time.perf_counter()
-    if planner == "bcp":
+    if planner == "bmtp":
         res = MinimumTimePlanner(
             rel_term=0.01,
             max_iter=120,
@@ -743,7 +743,7 @@ def animate(meshcat, phases, held_assignment):
 # ===========================================================================
 # main
 # ===========================================================================
-def main(planner="bcp", show_meshcat=True):
+def main(planner="bmtp", show_meshcat=True):
     sphere_v = pd.Hyperellipsoid.MakeHypersphere(V_MAX, np.zeros(3))
     sphere_a = pd.Hyperellipsoid.MakeHypersphere(A_MAX, np.zeros(3))
     vel_set = pd.CartesianProduct(sphere_v, sphere_v)
@@ -887,7 +887,7 @@ def main(planner="bcp", show_meshcat=True):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--planner", choices=["bcp", "scs"], default="bcp", help="planner backend (default: bcp)"
+        "--planner", choices=["bmtp", "scs"], default="bmtp", help="planner backend (default: bmtp)"
     )
     parser.add_argument(
         "--no-meshcat", action="store_true", help="skip the meshcat animation (run headless)"

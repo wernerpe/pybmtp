@@ -1,4 +1,4 @@
-"""The biconvex minimum-time planner (BCP) and its one-shot wrapper.
+"""The biconvex minimum-time planner (BMTP) and its one-shot wrapper.
 
 The planner alternates two convex sub-problems until the trajectory stops
 getting faster:
@@ -32,7 +32,7 @@ import pydrake.all as pd
 
 from .collisions import intersect_with_hpolyhedra
 from .limits import Limits
-from .polygonal import PolygonalInitializer
+from .polygonal import polygonal_initialization
 from .result import SolveResult
 from .updaters import PlaneUpdater, TrajectoryUpdater
 
@@ -126,11 +126,15 @@ class MinimumTimePlanner:
         t_start = time.time()
 
         # --- warm start: constraint-feasible polygonal trajectory ------------
-        init = PolygonalInitializer(
+        init = polygonal_initialization(
+            path,
+            domain,
             limits,
-            trajectory_degree=self.trajectory_degree,
+            degree=self.trajectory_degree,
+            continuity_order=self.continuity_order,
+            terminal_order=self.terminal_order,
             force_same_segment_time=True,
-        ).initialize(path)
+        )
         num_segments = len(init.curves)
         segment_time_init = init.curves[0].duration
         # Re-time onto the normalized [seg/N, (seg+1)/N] grid the updater uses.

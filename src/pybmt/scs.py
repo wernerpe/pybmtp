@@ -231,6 +231,4 @@ def solve_scs_minimum_time(
     Extra keyword arguments are forwarded to the :class:`EISCSPlanner`
     constructor (e.g. ``trajectory_degree``, ``solver_type``, ``rel_term``).
     """
-    return EISCSPlanner(**planner_kwargs).solve(
-        path, obstacles, domain, limits, verbose=verbose
-    )
+    return EISCSPlanner(**planner_kwargs).solve(path, obstacles, domain, limits, verbose=verbose)

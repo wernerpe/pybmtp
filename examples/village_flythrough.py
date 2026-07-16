@@ -28,16 +28,16 @@ import time
 
 import numpy as np
 import pydrake.all as pd
+from village import Village, plot_composite_bezier_curve
 
 from pybmt import Limits, MinimumTimePlanner
 from pybmt.collisions import intersect_with_hpolyhedra
-from village import Village, plot_composite_bezier_curve
 
 # --- village + flight configuration (matches the paper's village experiment) ---
 VILLAGE = dict(village_height=10, village_side=34, building_every=7, density=0.3, seed=0)
 V_MAX, A_MAX, J_MAX, SNAP_MAX = 5.0, 5.0, 25.0, 50.0
-TRAJ_DEGREE = 8               # C4-capable; rest velocity+acceleration at the ends
-SEGMENT_LENGTH = 10.0         # arc-length interpolation spacing -> few long segments
+TRAJ_DEGREE = 8  # C4-capable; rest velocity+acceleration at the ends
+SEGMENT_LENGTH = 10.0  # arc-length interpolation spacing -> few long segments
 
 
 def sphere(radius, dim=3):
@@ -78,20 +78,24 @@ def render_figure(path_out, village, waypoints, trajectory):
 
     for l, u in zip(village.L, village.U):
         if u[2] - l[2] > 1.0:  # tall solids ~ buildings / trees
-            ax_xy.add_patch(mpatches.Rectangle(l[:2], *(u[:2] - l[:2]),
-                                               facecolor="0.75", edgecolor="none"))
+            ax_xy.add_patch(
+                mpatches.Rectangle(l[:2], *(u[:2] - l[:2]), facecolor="0.75", edgecolor="none")
+            )
     ts = np.linspace(trajectory.initial_time, trajectory.final_time, 500)
     xyz = np.array([trajectory(t) for t in ts])
     ax_xy.plot(waypoints[:, 0], waypoints[:, 1], "o--", color="0.4", ms=3, lw=1, label="route")
     ax_xy.plot(xyz[:, 0], xyz[:, 1], "-", color="tab:blue", lw=2, label="min-time trajectory")
     ax_xy.set_aspect("equal")
     ax_xy.set_title("top view")
-    ax_xy.set_xlabel("x"); ax_xy.set_ylabel("y"); ax_xy.legend(loc="upper left", fontsize=8)
+    ax_xy.set_xlabel("x")
+    ax_xy.set_ylabel("y")
+    ax_xy.legend(loc="upper left", fontsize=8)
 
     T = trajectory.final_time
     speed = np.array([np.linalg.norm(trajectory.derivative()(t)) for t in ts])
     ax_z.plot(ts, xyz[:, 2], color="tab:blue", label="altitude z(t)")
-    ax_z.set_xlabel("time [s]"); ax_z.set_ylabel("z", color="tab:blue")
+    ax_z.set_xlabel("time [s]")
+    ax_z.set_ylabel("z", color="tab:blue")
     ax_z2 = ax_z.twinx()
     ax_z2.plot(ts, speed, color="tab:red", lw=1)
     ax_z2.axhline(V_MAX, color="tab:red", ls=":", lw=1)
@@ -129,21 +133,25 @@ def main(show_meshcat=True, out="village_flythrough.png"):
     side, height = VILLAGE["village_side"], VILLAGE["village_height"]
 
     # Three-corner route around the village, arc-length interpolated (as in the paper).
-    corners = np.array([
-        [-0.2, -0.2, 2.0],
-        [-0.2, side + 0.2, 2.0 + (height - 4) / 2],
-        [side + 0.2, side + 0.2, height - 2.0],
-    ])
+    corners = np.array(
+        [
+            [-0.2, -0.2, 2.0],
+            [-0.2, side + 0.2, 2.0 + (height - 4) / 2],
+            [side + 0.2, side + 0.2, height - 2.0],
+        ]
+    )
     waypoints = arc_length_interpolate(corners, SEGMENT_LENGTH)
-    print(f"[village] {len(obstacles)} obstacles, {len(waypoints)} waypoints "
-          f"({len(waypoints) - 1} segments)")
+    print(
+        f"[village] {len(obstacles)} obstacles, {len(waypoints)} waypoints "
+        f"({len(waypoints) - 1} segments)"
+    )
 
     limits = Limits(sphere(V_MAX), sphere(A_MAX), jerk=sphere(J_MAX), snap=sphere(SNAP_MAX))
     t0 = time.perf_counter()
     res = MinimumTimePlanner(
         trajectory_degree=TRAJ_DEGREE,
-        continuity_order=4,     # C1..C4 continuous (continuous snap)
-        terminal_order=2,       # rest velocity + acceleration at both ends
+        continuity_order=4,  # C1..C4 continuous (continuous snap)
+        terminal_order=2,  # rest velocity + acceleration at both ends
         plane_degree=1,
         rel_term=0.01,
         max_iter=50,
@@ -154,9 +162,11 @@ def main(show_meshcat=True, out="village_flythrough.png"):
     snap = res.trajectory.derivative().derivative().derivative().derivative()
     ts = np.linspace(res.trajectory.initial_time, res.trajectory.final_time, 2000)
     peak_snap = max(np.linalg.norm(snap(t)) for t in ts)
-    print(f"[village] min time = {res.total_time:.2f} s  |  solve {solve_s:.2f} s  |  "
-          f"{res.num_iterations} iters  |  peak |snap| = {peak_snap:.1f} (<= {SNAP_MAX})  |  "
-          f"collision-free: {hits == {}}")
+    print(
+        f"[village] min time = {res.total_time:.2f} s  |  solve {solve_s:.2f} s  |  "
+        f"{res.num_iterations} iters  |  peak |snap| = {peak_snap:.1f} (<= {SNAP_MAX})  |  "
+        f"collision-free: {hits == {}}"
+    )
 
     fig_path = pathlib.Path(out).resolve()
     render_figure(fig_path, village, waypoints, res.trajectory)
