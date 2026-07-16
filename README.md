@@ -5,12 +5,14 @@
 
 Software accompanying the paper. More details to follow.
 
-`pybmt` plans time-optimal Bezier trajectories that respect velocity and
-acceleration limits while avoiding convex obstacles. The software contains three planners:
+`pybmt` plans time-optimal Bezier trajectories that respect velocity,
+acceleration, and optionally jerk and snap limits while avoiding convex
+obstacles. The software contains three planners:
 
 - **`MinimumTimePlanner`** — the headline biconvex planner (BCP): an outer loop
   alternating a trajectory-update SOCP and a separating-plane-update LP, with a
-  parallel Bezier collision check between them.
+  parallel Bezier collision check between them. Limits up to snap (4th
+  derivative) and the junction-continuity order are configurable.
 - **`PolygonalInitializer`** — a fast constraint-respecting polygonal warm start
   used to seed the biconvex planners.
 - **`EISCSPlanner`** — Combination of Edge-Inflation for convex obstacles paired with SCSPlanning as used in the paper.
@@ -30,6 +32,32 @@ This builds the C++ collision kernel and pulls the runtime dependencies:
 `drake` (pydrake) and `pybezier` from PyPI, plus `scsplanning` (pinned to a
 specific upstream commit, since it has no PyPI release).
 
+## Usage
+
+Limits are bundled in a single `Limits` object; supplying `jerk`/`snap` is
+optional, and the program is built no larger than the highest limit you give
+(velocity + acceleration alone is the acceleration-only program).
+
+```python
+import numpy as np, pydrake.all as pd
+from pybmt import Limits, MinimumTimePlanner
+
+ball = lambda r: pd.Hyperellipsoid.MakeHypersphere(r, np.zeros(3))
+limits = Limits(velocity=ball(5.0), acceleration=ball(5.0),
+                jerk=ball(25.0), snap=ball(50.0))       # jerk/snap optional
+
+result = MinimumTimePlanner(
+    trajectory_degree=8,
+    continuity_order=4,     # C1..C4 continuous (defaults to the limit order)
+    terminal_order=2,       # rest velocity + acceleration at both ends
+).solve(path, obstacles, domain, limits)
+
+print(result.total_time, result.trajectory)
+```
+
+Drop `jerk`/`snap` for a velocity+acceleration problem; `continuity_order` and
+`terminal_order` default to the number of supplied limits and may not exceed it.
+
 ## Examples
 
 Requires [`uv`](https://docs.astral.sh/uv/). The `examples/` directory is a uv
@@ -40,6 +68,7 @@ run — no manual install needed:
 cd examples
 uv run box_obstacles_2d.py                          # 2D box-obstacle demo (BCP vs SCS)
 uv run dual_arm_unload.py --planner bcp             # dual-arm pallet unload
+uv run village_flythrough.py --no-meshcat           # snap-constrained UAV flight across the village
 ```
 
 ## Tests

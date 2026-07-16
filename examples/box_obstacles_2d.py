@@ -26,7 +26,7 @@ import time
 import numpy as np
 import pydrake.all as pd
 
-from pybmt import EISCSPlanner, MinimumTimePlanner, PolygonalInitializer
+from pybmt import EISCSPlanner, Limits, MinimumTimePlanner, PolygonalInitializer
 from pybmt.collisions import intersect_with_hpolyhedra
 
 
@@ -133,7 +133,7 @@ def main():
     domain, obstacles, obstacle_boxes, waypoints, vel_set, acc_set = build_scene()
 
     # A constraint-feasible polygonal warm start, drawn as the dashed seed path.
-    seed_curve = PolygonalInitializer(vel_set, acc_set, force_same_segment_time=True).initialize(
+    seed_curve = PolygonalInitializer(Limits(vel_set, acc_set), force_same_segment_time=True).initialize(
         waypoints
     )
 
@@ -143,12 +143,12 @@ def main():
         max_iter=120,
         collision_check_tol=1e-3,
         trajectory_to_plane_tol=1e-3,
-    ).solve(waypoints, obstacles, domain, vel_set, acc_set, verbose=True)
+    ).solve(waypoints, obstacles, domain, Limits(vel_set, acc_set), verbose=True)
     bcp_solve_s = time.perf_counter() - t0
 
     t0 = time.perf_counter()
     scs = EISCSPlanner(rel_term=0.01).solve(
-        waypoints, obstacles, domain, vel_set, acc_set, verbose=True
+        waypoints, obstacles, domain, Limits(vel_set, acc_set), verbose=True
     )
     scs_solve_s = time.perf_counter() - t0
 

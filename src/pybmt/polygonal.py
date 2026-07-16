@@ -18,6 +18,8 @@ import numpy as np
 import pybezier as pb
 import pydrake.all as pd
 
+from .limits import Limits
+
 __all__ = [
     "PolygonalInitializer",
     "solve_segment_time_optimal",
@@ -28,11 +30,16 @@ __all__ = [
 class PolygonalInitializer:
     """Connects waypoints with constraint-feasible minimum-time Bezier segments.
 
+    The straight-line warm start uses the velocity and acceleration limits only
+    (each segment collapses to a 1D minimum-time program along its direction);
+    any jerk / snap limits carried by ``limits`` are enforced later by the
+    biconvex trajectory update, not here.
+
     Parameters
     ----------
-    velocity_set, acceleration_set:
-        Convex sets (typically :class:`pydrake.geometry.optimization.HPolyhedron`)
-        bounding the trajectory's velocity and acceleration.
+    limits:
+        :class:`~pybmt.limits.Limits`; its velocity and acceleration sets bound
+        the warm-start segments.
     trajectory_degree:
         Bezier degree of each segment. Must be >= 5 to zero the boundary
         acceleration (needed for C2-continuous downstream planning).
@@ -47,14 +54,14 @@ class PolygonalInitializer:
 
     def __init__(
         self,
-        velocity_set: pd.ConvexSet,
-        acceleration_set: pd.ConvexSet,
+        limits: Limits,
         trajectory_degree: int = 5,
         force_same_segment_time: bool = False,
         zero_boundary_acceleration: bool = True,
     ):
-        self.velocity_set = velocity_set
-        self.acceleration_set = acceleration_set
+        self.limits = limits
+        self.velocity_set = limits.velocity
+        self.acceleration_set = limits.acceleration
         self.trajectory_degree = trajectory_degree
         self.force_same_segment_time = force_same_segment_time
         self.zero_boundary_acceleration = zero_boundary_acceleration

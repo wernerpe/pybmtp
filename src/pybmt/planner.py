@@ -31,6 +31,7 @@ import pybezier as pb
 import pydrake.all as pd
 
 from .collisions import intersect_with_hpolyhedra
+from .limits import Limits
 from .polygonal import PolygonalInitializer
 from .result import SolveResult
 from .updaters import PlaneUpdater, TrajectoryUpdater
@@ -64,10 +65,13 @@ class MinimumTimePlanner:
         consecutive feasible iterates.
     max_iter:
         Maximum biconvex outer iterations.
-    add_terminal_velocity_constraint, add_terminal_acceleration_constraint:
-        Pin start/end velocity / acceleration to zero.
-    add_c2_continuity:
-        Enforce C2 continuity at segment junctions.
+    continuity_order:
+        Enforce ``C1 ... C_{continuity_order}`` continuity at segment junctions.
+        ``None`` (default) uses the limits' order ``J`` (e.g. C1+C2 for velocity
+        + acceleration limits). May not exceed ``J``.
+    terminal_order:
+        Pin derivatives ``1 ... terminal_order`` to zero at the start and end.
+        ``None`` (default) uses ``J`` (e.g. zero terminal velocity + acceleration).
     trajectory_to_plane_tol:
         Positive buffer pushing the trajectory off each plane. (The underlying
         LP enforces ``a.r + b <= tol``; the sign is flipped internally so a
@@ -84,9 +88,8 @@ class MinimumTimePlanner:
         plane_degree: int = 1,
         rel_term: float = 0.05,
         max_iter: int = 100,
-        add_terminal_velocity_constraint: bool = True,
-        add_terminal_acceleration_constraint: bool = True,
-        add_c2_continuity: bool = True,
+        continuity_order: int | None = None,
+        terminal_order: int | None = None,
         trajectory_to_plane_tol: float = 1e-8,
         plane_to_obstacle_tol: float = 1e-9,
         collision_check_tol: float = 0.05,
@@ -99,9 +102,8 @@ class MinimumTimePlanner:
         self.plane_degree = plane_degree
         self.rel_term = rel_term
         self.max_iter = max_iter
-        self.add_terminal_velocity_constraint = add_terminal_velocity_constraint
-        self.add_terminal_acceleration_constraint = add_terminal_acceleration_constraint
-        self.add_c2_continuity = add_c2_continuity
+        self.continuity_order = continuity_order
+        self.terminal_order = terminal_order
         self.trajectory_to_plane_tol = trajectory_to_plane_tol
         self.plane_to_obstacle_tol = plane_to_obstacle_tol
         self.collision_check_tol = collision_check_tol
@@ -111,22 +113,21 @@ class MinimumTimePlanner:
         path: np.ndarray,
         obstacles: List[pd.HPolyhedron],
         domain: pd.HPolyhedron,
-        velocity_set: pd.ConvexSet,
-        acceleration_set: pd.ConvexSet,
+        limits: Limits,
         verbose: bool = False,
     ) -> SolveResult:
         """Plan a minimum-time trajectory through ``path`` avoiding ``obstacles``.
 
         ``path`` is an ``(N, dim)`` array of waypoints; the first and last are
-        the start/goal. ``domain`` bounds the workspace.
+        the start/goal. ``domain`` bounds the workspace. ``limits`` bundles the
+        velocity / acceleration (and optional jerk / snap) sets.
         """
         path = np.asarray(path, dtype=float)
         t_start = time.time()
 
         # --- warm start: constraint-feasible polygonal trajectory ------------
         init = PolygonalInitializer(
-            velocity_set,
-            acceleration_set,
+            limits,
             trajectory_degree=self.trajectory_degree,
             force_same_segment_time=True,
         ).initialize(path)
@@ -140,12 +141,10 @@ class MinimumTimePlanner:
             path[-1],
             domain,
             num_segments,
-            velocity_set,
-            acceleration_set,
+            limits,
             degree=self.trajectory_degree,
-            add_terminal_velocity_constraint=self.add_terminal_velocity_constraint,
-            add_terminal_acceleration_constraint=self.add_terminal_acceleration_constraint,
-            add_c2_continuity=self.add_c2_continuity,
+            continuity_order=self.continuity_order,
+            terminal_order=self.terminal_order,
         )
         plane_updater = PlaneUpdater(
             obstacles, self.plane_degree, plane_to_obstacle_tol=self.plane_to_obstacle_tol
@@ -258,8 +257,7 @@ def solve_minimum_time(
     path: np.ndarray,
     obstacles: List[pd.HPolyhedron],
     domain: pd.HPolyhedron,
-    velocity_set: pd.ConvexSet,
-    acceleration_set: pd.ConvexSet,
+    limits: Limits,
     verbose: bool = False,
     **planner_kwargs,
 ) -> SolveResult:
@@ -269,5 +267,5 @@ def solve_minimum_time(
     constructor (e.g. ``trajectory_degree``, ``rel_term``, ``max_iter``).
     """
     return MinimumTimePlanner(**planner_kwargs).solve(
-        path, obstacles, domain, velocity_set, acceleration_set, verbose=verbose
+        path, obstacles, domain, limits, verbose=verbose
     )

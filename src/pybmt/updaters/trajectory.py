@@ -4,33 +4,38 @@ Given a fixed set of separating planes (one per active trajectory-segment /
 obstacle pair), this solves for the Bezier control points and the common
 segment duration ``T`` that minimize total time while satisfying:
 
-  * boundary conditions (position, and optionally zero velocity/acceleration),
-  * velocity and acceleration limits (convex-set membership of the Bezier
+  * boundary conditions (position, and optionally zero derivatives at the ends),
+  * per-derivative limits up to order ``J`` (convex-set membership of the Bezier
     derivative control points, scaled by powers of ``T``),
-  * C1 / C2 continuity between segments,
+  * ``C1 ... C_{continuity_order}`` continuity between segments,
   * the half-space constraints from the current planes.
 
-All segments share one duration ``T`` (the time grid is uniform); the rotated
-Lorentz "power ladder" links ``T_powers = [1, T, T^2]`` so velocity (linear in
-``T``) and acceleration (linear in ``T^2``) limits stay convex.
+All segments share one duration ``T`` (the time grid is uniform). The highest
+constrained derivative order ``J`` (2 = acceleration, 3 = jerk, 4 = snap) is read
+from the :class:`~pybmt.limits.Limits` object, and the rotated-Lorentz "power
+ladder" ``T_powers = [1, T, T**2, ..., T**J]`` is built *only* that deep -- the
+k-th derivative limit scales with ``T_powers[k]``. With only velocity and
+acceleration limits this is exactly the ``[1, T, T**2]`` program; adding jerk /
+snap grows the ladder to ``T**3`` / ``T**4`` and nothing else changes.
 
 Two equivalent constraint encodings live here:
 
   * a **symbolic** form built from ``pydrake`` expressions and Bezier
-    derivative curves — readable, and the reference implementation;
+    derivative curves -- readable, and the reference implementation;
   * a **fast matrix** form that writes the same affine constraints directly as
     ``AddLinearConstraint(A, lb, ub, vars)``, skipping Drake's symbolic-formula
-    parsing (which dominated build time, ~7 ms per construction).
+    parsing (which dominated build time).
 
-Every matrix block below is annotated with the symbolic form it expands. The
-``use_symbolic_constraints`` flag forces the symbolic path even for
-HPolyhedron sets, which the test-suite uses to assert the two forms produce
+Both share one general finite-difference formula for the k-th Bezier
+derivative, so they reduce to identical velocity/acceleration constraints at
+``J = 2``. The ``use_symbolic_constraints`` flag forces the symbolic path even
+for HPolyhedron sets, which the test-suite uses to assert the two forms produce
 identical solutions.
 """
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pybezier as pb
@@ -38,6 +43,23 @@ import pydrake.all as pd
 from scipy.special import comb as _comb
 
 from ..bezier_ops import bezier_dot_product
+from ..limits import Limits
+
+
+def _fd_coeffs(k: int) -> np.ndarray:
+    """Coefficients of the k-th forward finite difference: ``(-1)^(k-j) C(k, j)``.
+
+    ``Delta^k p[i] = sum_{j=0}^{k} (-1)^(k-j) C(k,j) p[i+j]``.
+    """
+    return np.array([(-1) ** (k - j) * _comb(k, j, exact=True) for j in range(k + 1)], float)
+
+
+def _falling_factorial(d: int, k: int) -> float:
+    """``d! / (d-k)! = d (d-1) ... (d-k+1)`` -- the Bezier k-th-derivative scale."""
+    r = 1.0
+    for i in range(k):
+        r *= d - i
+    return r
 
 
 def _plane_constraint_matrix(
@@ -102,9 +124,9 @@ def _plane_constraint_matrix(
 class TrajectoryUpdater:
     """Builds and repeatedly solves the trajectory-update SOCP.
 
-    Construction wires up the time-invariant constraints (boundary, velocity,
-    acceleration, continuity); planes are added per :meth:`solve` call and can
-    be removed with :meth:`clear_planes`, so the same program object is reused
+    Construction wires up the time-invariant constraints (boundary, derivative
+    limits, continuity); planes are added per :meth:`solve` call and can be
+    removed with :meth:`clear_planes`, so the same program object is reused
     across biconvex iterations.
 
     Parameters
@@ -116,15 +138,24 @@ class TrajectoryUpdater:
         points via the Bernstein convex-hull property).
     num_segments:
         Number of Bezier segments.
-    velocity_set, acceleration_set:
-        Convex limit sets. Both must contain the origin.
+    limits:
+        :class:`~pybmt.limits.Limits` bundling velocity + acceleration and,
+        optionally, jerk and snap sets. Its :attr:`~pybmt.limits.Limits.order`
+        ``J`` sets the depth of the ``T_powers`` ladder.
     degree:
-        Bezier degree of each trajectory segment.
-    add_terminal_velocity_constraint, add_terminal_acceleration_constraint:
-        Pin start/end velocity / acceleration to zero.
-    add_c2_continuity:
-        Enforce C2 (acceleration) continuity at segment junctions in addition
-        to C1.
+        Bezier degree of each trajectory segment. Must satisfy
+        ``degree >= 2 * terminal_order + 1`` (so terminal-rest control points do
+        not overlap) and ``degree >= continuity_order + 1``.
+    continuity_order:
+        Enforce ``C1 ... C_{continuity_order}`` continuity at segment junctions.
+        Defaults to ``J``. May not exceed ``J``: constraining the continuity of a
+        derivative that is itself unconstrained would fight the minimum-time
+        objective (that derivative is driven to infinity), so this raises.
+    terminal_order:
+        Pin derivatives ``1 ... terminal_order`` to zero at the start and end
+        (rest-to-rest). Defaults to ``J`` (e.g. an acceleration limit gives
+        ``r''(0) = r''(1) = 0``). ``0`` leaves the endpoints free apart from
+        position. May not exceed ``J``.
     use_symbolic_constraints:
         Force the readable symbolic constraint path even for HPolyhedron sets.
         Default False (fast matrix path). Mainly for validation/testing.
@@ -136,12 +167,10 @@ class TrajectoryUpdater:
         target: np.ndarray,
         domain: pd.HPolyhedron,
         num_segments: int,
-        velocity_set: pd.ConvexSet,
-        acceleration_set: pd.ConvexSet,
+        limits: Limits,
         degree: int = 6,
-        add_terminal_velocity_constraint: bool = True,
-        add_terminal_acceleration_constraint: bool = True,
-        add_c2_continuity: bool = True,
+        continuity_order: Optional[int] = None,
+        terminal_order: Optional[int] = None,
         use_symbolic_constraints: bool = False,
     ):
         self.source = np.asarray(source, float)
@@ -149,20 +178,38 @@ class TrajectoryUpdater:
         self.dim = len(self.source)
         self.N = num_segments
         self.degree = degree
-        self.vel_set = velocity_set
-        self.acc_set = acceleration_set
-        self.add_terminal_velocity_constraint = add_terminal_velocity_constraint
-        self.add_terminal_acceleration_constraint = add_terminal_acceleration_constraint
-        self.add_c2_continuity = add_c2_continuity
         self.domain = domain
 
-        hpoly_sets = isinstance(velocity_set, pd.HPolyhedron) and isinstance(
-            acceleration_set, pd.HPolyhedron
-        )
-        self.use_symbolic_constraints = use_symbolic_constraints or not hpoly_sets
+        self.limits = limits
+        self.deriv_sets = limits.sets  # [velocity, acceleration, (jerk), (snap)]
+        self.J = limits.order
 
-        assert self.vel_set.PointInSet(np.zeros(self.dim)), "0 must be in the velocity set"
-        assert self.acc_set.PointInSet(np.zeros(self.dim)), "0 must be in the acceleration set"
+        self.continuity_order = self.J if continuity_order is None else int(continuity_order)
+        self.terminal_order = self.J if terminal_order is None else int(terminal_order)
+
+        if self.continuity_order > self.J:
+            raise ValueError(
+                f"continuity_order ({self.continuity_order}) cannot exceed the highest "
+                f"constrained derivative order J={self.J}: the C{self.continuity_order} "
+                "constraint would couple an unconstrained derivative, which the minimum-time "
+                "objective drives to infinity."
+            )
+        if not 0 <= self.terminal_order <= self.J:
+            raise ValueError(
+                f"terminal_order ({self.terminal_order}) must be between 0 and J={self.J}."
+            )
+        if degree < 2 * self.terminal_order + 1:
+            raise ValueError(
+                f"degree ({degree}) must be >= 2*terminal_order+1 = {2 * self.terminal_order + 1} "
+                "so the zero-derivative control points at the two ends do not overlap."
+            )
+        if degree < self.continuity_order + 1:
+            raise ValueError(
+                f"degree ({degree}) must be >= continuity_order+1 = {self.continuity_order + 1}."
+            )
+
+        hpoly_sets = all(isinstance(s, pd.HPolyhedron) for s in self.deriv_sets)
+        self.use_symbolic_constraints = use_symbolic_constraints or not hpoly_sets
 
         self.solver = pd.ClarabelSolver()
         self.prog = pd.MathematicalProgram()
@@ -174,19 +221,18 @@ class TrajectoryUpdater:
         self._build_segments()
         self._build_boundary_constraints()
         if self.use_symbolic_constraints:
-            self._build_limit_and_continuity_symbolic()
+            self._build_limits_and_continuity_symbolic()
         else:
-            self._build_limit_and_continuity_matrix()
+            self._build_limits_and_continuity_matrix()
         self._build_terminal_rest_constraints()
 
     # ------------------------------------------------------------------ setup
 
     def _build_time_variables(self) -> None:
-        # T_powers = [1, T, T^2]. The rotated Lorentz cone T_powers[0]*T_powers[2]
-        # >= T_powers[1]^2 with T_powers[0] == 1 enforces T_powers[2] >= T^2,
-        # keeping the (otherwise non-convex) power relationship convex. Velocity
-        # limits scale with T (T_powers[1]); acceleration with T^2 (T_powers[2]).
-        self.J = 2
+        # T_powers = [1, T, T**2, ..., T**J]. The rotated Lorentz cone
+        # T_powers[j-2]*T_powers[j] >= T_powers[j-1]**2 (with T_powers[0] == 1)
+        # forces T_powers[j] >= T**j while staying convex. The k-th derivative
+        # limit scales with T_powers[k]; we build the ladder exactly J deep.
         self.T_powers = self.prog.NewContinuousVariables(self.J + 1, "T_powers")
         self.prog.AddLinearEqualityConstraint(self.T_powers[0] == 1)
         for j in range(2, self.J + 1):
@@ -195,14 +241,15 @@ class TrajectoryUpdater:
             A[1, j] = 1
             A[2, j - 1] = 1
             self.prog.AddRotatedLorentzConeConstraint(A=A, b=np.zeros(3), vars=self.T_powers)
-        self.prog.AddLinearCost(self.T_powers[-1])
+        self.prog.AddLinearCost(self.T_powers[-1])  # minimize T**J (monotone in T)
 
     def _build_segments(self) -> None:
         # Control points are decision variables, except shared junction points
         # (C0 continuity: a segment's first point IS the previous segment's
-        # last point) and the boundary-locked endpoint triples.
+        # last point) and the boundary-locked endpoint groups.
         self.untimed_segments: List[pb.BezierCurve] = []
         n_cp = self.degree + 1
+        n_pin = self.terminal_order + 1  # coincident control points pinned at each end
         prev_last = None
         for seg_id in range(self.N):
             cps = []
@@ -215,11 +262,12 @@ class TrajectoryUpdater:
                 if i == n_cp - 1:
                     prev_last = cp
 
-                # First/last 3 control points are pinned to source/target by the
-                # zero boundary vel+acc constraints, so they skip the domain box.
-                if seg_id == 0 and i < 3:
+                # The first/last n_pin control points are pinned onto source/target
+                # by the boundary + zero-terminal-derivative constraints, so they
+                # are already inside the domain and skip the domain box.
+                if seg_id == 0 and i < n_pin:
                     continue
-                if seg_id == self.N - 1 and i >= n_cp - 3:
+                if seg_id == self.N - 1 and i >= n_cp - n_pin:
                     continue
                 # i == 0 is a shared junction; its domain membership is handled
                 # by the owning (previous) segment's last point.
@@ -240,116 +288,125 @@ class TrajectoryUpdater:
 
     # ---------------------------------------------- limits + continuity (fast)
 
-    def _build_limit_and_continuity_matrix(self) -> None:
-        """Fast numeric matrix encoding of velocity/acceleration/continuity.
+    def _build_limits_and_continuity_matrix(self) -> None:
+        """Fast numeric matrix encoding of the derivative limits and continuity.
 
-        Bezier derivative identities (control-point finite differences):
-            sdot[i]  = d   * (pts[i+1] - pts[i])
-            sddot[i] = d(d-1) * (pts[i+2] - 2 pts[i+1] + pts[i])
+        For every derivative order ``k = 1 ... J`` the k-th Bezier derivative
+        control point is a finite difference of ``k+1`` position control points,
+        scaled by the falling factorial (see :func:`_fd_coeffs`)::
+
+            s^(k)[i] = ff(d,k) * sum_{j=0}^{k} fd_k[j] * pts[i+j]
+
+        and its limit is ``set_A @ s^(k)[i] <= set_b * T_powers[k]``. At ``k = 1``
+        and ``k = 2`` this reproduces exactly the hand-written velocity /
+        acceleration blocks.
         """
         d = self.degree
         n_segs = len(self.untimed_segments)
-        vel_A, vel_b = self.vel_set.A(), self.vel_set.b()
-        acc_A, acc_b = self.acc_set.A(), self.acc_set.b()
         eye = np.eye(self.dim)
 
-        # Velocity:  vel_A @ sdot[i] <= vel_b * T
-        #   symbolic: pd.le(vel_A @ (d*(pts[i+1]-pts[i])) - vel_b*T_powers[1], 0)
-        #   expand  : [ d*vel_A | -d*vel_A | -vel_b ] @ [pts[i+1]; pts[i]; T] <= 0
-        A_vel = np.hstack([d * vel_A, -d * vel_A, -vel_b.reshape(-1, 1)])
-        lb_vel = np.full(vel_A.shape[0], -np.inf)
-        ub_vel = np.zeros(vel_A.shape[0])
-
-        # Acceleration:  acc_A @ sddot[i] <= acc_b * T^2,  c := d(d-1)
-        #   symbolic: pd.le(acc_A @ (c*(pts[i+2]-2pts[i+1]+pts[i])) - acc_b*T_powers[2], 0)
-        #   expand  : [ c*acc_A | -2c*acc_A | c*acc_A | -acc_b ] @ [pts[i+2]; pts[i+1]; pts[i]; T^2] <= 0
-        c_acc = d * (d - 1)
-        A_acc = np.hstack([c_acc * acc_A, -2 * c_acc * acc_A, c_acc * acc_A, -acc_b.reshape(-1, 1)])
-        lb_acc = np.full(acc_A.shape[0], -np.inf)
-        ub_acc = np.zeros(acc_A.shape[0])
-
-        # C1 continuity:  s1dot[-1] == s2dot[0]. With C0 (s2.pts[0] == s1.pts[-1]):
-        #   symbolic: pd.eq(d*(s1.pts[-1]-s1.pts[-2]), d*(s2.pts[1]-s1.pts[-1]))
-        #   expand  : [ 2I | -I | -I ] @ [s1.pts[-1]; s1.pts[-2]; s2.pts[1]] == 0
-        A_c1 = np.hstack([2 * eye, -eye, -eye])
-        eq_c1 = np.zeros(self.dim)
-
-        # C2 continuity:  s1ddot[-1] == s2ddot[0]. With C0, dividing by c:
-        #   symbolic: pd.eq(s1.pts[-1]-2s1.pts[-2]+s1.pts[-3], s2.pts[2]-2s2.pts[1]+s1.pts[-1])
-        #   expand  : [ I | -2I | 2I | -I ] @ [s1.pts[-3]; s1.pts[-2]; s2.pts[1]; s2.pts[2]] == 0
-        A_c2 = np.hstack([eye, -2 * eye, 2 * eye, -eye])
-        eq_c2 = np.zeros(self.dim)
+        # Precompute the per-order limit constraint row-block [ff*fd_k[0]*A | ... | ff*fd_k[k]*A | -b].
+        limit_blocks = []
+        for k in range(1, self.J + 1):
+            A_set, b_set = self.deriv_sets[k - 1].A(), self.deriv_sets[k - 1].b()
+            fd = _fd_coeffs(k)
+            ff = _falling_factorial(d, k)
+            A_row = np.hstack(
+                [ff * fd[j] * A_set for j in range(k + 1)] + [-b_set.reshape(-1, 1)]
+            )
+            lb = np.full(A_set.shape[0], -np.inf)
+            ub = np.zeros(A_set.shape[0])
+            limit_blocks.append((A_row, lb, ub))
 
         for s_idx, s in enumerate(self.untimed_segments):
             pts = s.points
-            v_start, v_stop, a_start, a_stop = self._derivative_index_range(s_idx, n_segs)
-            for i in range(v_start, v_stop):
-                c = self.prog.AddLinearConstraint(
-                    A_vel, lb_vel, ub_vel, np.concatenate([pts[i + 1], pts[i], [self.T_powers[1]]])
-                )
-                c.evaluator().set_description(f"velocity_seg{s_idx}_cp{i}")
-            for i in range(a_start, a_stop):
-                c = self.prog.AddLinearConstraint(
-                    A_acc,
-                    lb_acc,
-                    ub_acc,
-                    np.concatenate([pts[i + 2], pts[i + 1], pts[i], [self.T_powers[2]]]),
-                )
-                c.evaluator().set_description(f"acceleration_seg{s_idx}_cp{i}")
+            for k in range(1, self.J + 1):
+                A_row, lb, ub = limit_blocks[k - 1]
+                start, stop = self._derivative_index_range(s_idx, k, n_segs)
+                for i in range(start, stop):
+                    vs = np.concatenate(
+                        [pts[i + j] for j in range(k + 1)] + [[self.T_powers[k]]]
+                    )
+                    c = self.prog.AddLinearConstraint(A_row, lb, ub, vs)
+                    c.evaluator().set_description(f"deriv{k}_seg{s_idx}_cp{i}")
 
+        # The continuity coefficient pattern depends only on (degree, k), not on
+        # which junction, so build each row's matrix + control-point selector once
+        # and reuse it across all N-1 junctions.
+        cont_patterns = {
+            k: self._continuity_pattern(k, eye)
+            for k in range(1, self.continuity_order + 1)
+            if self.degree >= k + 1
+        }
         for s_id in range(n_segs - 1):
             s1, s2 = self.untimed_segments[s_id], self.untimed_segments[s_id + 1]
-            if s1.degree >= 2:
-                c = self.prog.AddLinearConstraint(
-                    A_c1, eq_c1, eq_c1, np.concatenate([s1.points[-1], s1.points[-2], s2.points[1]])
-                )
-                c.evaluator().set_description(f"C1_seg{s_id}_to_{s_id+1}")
-            if self.add_c2_continuity and s1.degree >= 3:
-                c = self.prog.AddLinearConstraint(
-                    A_c2,
-                    eq_c2,
-                    eq_c2,
-                    np.concatenate([s1.points[-3], s1.points[-2], s2.points[1], s2.points[2]]),
-                )
-                c.evaluator().set_description(f"C2_seg{s_id}_to_{s_id+1}")
+            pts = {"s1": s1.points, "s2": s2.points}
+            for k, (A_c, keys) in cont_patterns.items():
+                vars_c = np.concatenate([pts[side][idx] for side, idx in keys])
+                c = self.prog.AddLinearConstraint(A_c, np.zeros(self.dim), np.zeros(self.dim), vars_c)
+                c.evaluator().set_description(f"C{k}_seg{s_id}_to_{s_id + 1}")
+
+    def _continuity_pattern(self, k: int, eye: np.ndarray) -> Tuple[np.ndarray, list]:
+        """Reusable matrix form of ``s1^(k)[-1] == s2^(k)[0]`` (the falling factor cancels).
+
+        ``s1^(k)[-1]`` uses ``s1.pts[d-k .. d]`` and ``s2^(k)[0]`` uses
+        ``s2.pts[0 .. k]``; the shared junction point (``s1.pts[-1]`` is
+        ``s2.pts[0]`` under C0) has its coefficients merged, so this reduces to the
+        familiar ``[2I,-I,-I]`` (C1) / ``[I,-2I,2I,-I]`` (C2) rows. Returns
+        ``(A, keys)`` where ``keys`` is an ordered list of ``(side, idx)`` selecting
+        the control-point columns from ``{'s1': s1.points, 's2': s2.points}``.
+        """
+        d = self.degree
+        fd = _fd_coeffs(k)
+
+        def canon(side, idx):  # fold the shared junction point onto ('s1', d)
+            return ("s1", d) if (side == "s2" and idx == 0) else (side, idx)
+
+        coeffs: dict = {}
+        order: list = []
+        for j in range(k + 1):
+            for side, idx, sign in (("s1", d - k + j, fd[j]), ("s2", j, -fd[j])):
+                key = canon(side, idx)
+                if key not in coeffs:
+                    coeffs[key] = 0.0
+                    order.append(key)
+                coeffs[key] += sign
+        keys = [key for key in order if abs(coeffs[key]) > 1e-15]
+        A = np.hstack([coeffs[key] * eye for key in keys])
+        return A, keys
 
     # ----------------------------------------- limits + continuity (symbolic)
 
-    def _build_limit_and_continuity_symbolic(self) -> None:
+    def _build_limits_and_continuity_symbolic(self) -> None:
         """Readable symbolic encoding (reference; also the path for non-HPoly sets).
 
-        This is the form the matrix version above expands. It builds the Bezier
-        derivative curves explicitly and constrains each control point via
-        Drake symbolic expressions / convex-set scaling constraints.
+        Builds the Bezier derivative curves explicitly (``s`` -> ``s'`` -> ...)
+        and constrains each control point via Drake symbolic expressions /
+        convex-set scaling constraints.
         """
         n_segs = len(self.untimed_segments)
         for s_idx, s in enumerate(self.untimed_segments):
-            sdot = s.derivative()
-            sddot = sdot.derivative()
-            v_start, v_stop, a_start, a_stop = self._derivative_index_range(s_idx, n_segs)
-
-            for i in range(v_start, v_stop):
-                self._add_set_membership(
-                    self.vel_set, sdot.points[i], self.T_powers[1], f"velocity_seg{s_idx}_cp{i}"
-                )
-            for i in range(a_start, a_stop):
-                self._add_set_membership(
-                    self.acc_set,
-                    sddot.points[i],
-                    self.T_powers[2],
-                    f"acceleration_seg{s_idx}_cp{i}",
-                )
+            deriv = s
+            for k in range(1, self.J + 1):
+                deriv = deriv.derivative()
+                start, stop = self._derivative_index_range(s_idx, k, n_segs)
+                for i in range(start, stop):
+                    self._add_set_membership(
+                        self.deriv_sets[k - 1],
+                        deriv.points[i],
+                        self.T_powers[k],
+                        f"deriv{k}_seg{s_idx}_cp{i}",
+                    )
 
         for s_id in range(n_segs - 1):
             s1, s2 = self.untimed_segments[s_id], self.untimed_segments[s_id + 1]
-            s1dot, s2dot = s1.derivative(), s2.derivative()
-            if s1.degree >= 2:
-                c = self.prog.AddLinearConstraint(pd.eq(s1dot.points[-1], s2dot.points[0]))
-                c.evaluator().set_description(f"C1_seg{s_id}_to_{s_id+1}")
-            if self.add_c2_continuity and s1.degree >= 3:
-                s1ddot, s2ddot = s1dot.derivative(), s2dot.derivative()
-                c = self.prog.AddLinearConstraint(pd.eq(s1ddot.points[-1], s2ddot.points[0]))
-                c.evaluator().set_description(f"C2_seg{s_id}_to_{s_id+1}")
+            d1, d2 = s1, s2
+            for k in range(1, self.continuity_order + 1):
+                d1, d2 = d1.derivative(), d2.derivative()
+                if s1.degree < k + 1:
+                    continue
+                c = self.prog.AddLinearConstraint(pd.eq(d1.points[-1], d2.points[0]))
+                c.evaluator().set_description(f"C{k}_seg{s_id}_to_{s_id + 1}")
 
     def _add_set_membership(self, convex_set, point, scale, description) -> None:
         """Enforce ``point in scale * convex_set`` symbolically."""
@@ -365,51 +422,47 @@ class TrajectoryUpdater:
             self.prog.SetInitialGuess(aux, np.zeros(self.dim))
             convex_set.AddPointInNonnegativeScalingConstraints(self.prog, aux, scale)
 
-    def _derivative_index_range(self, s_idx: int, n_segs: int) -> Tuple[int, int, int, int]:
-        """Control-point index ranges for velocity/acceleration constraints.
+    def _derivative_index_range(self, s_idx: int, k: int, n_segs: int) -> Tuple[int, int]:
+        """Control-point index range ``[start, stop)`` for the k-th derivative limit.
 
-        The boundary control points of the first/last segment are pinned by the
-        zero-velocity/zero-acceleration boundary constraints, so we skip them
-        here to avoid redundant (and over-tight) rows. Interior segments share
-        their first control point with the previous segment (C0), so that index
-        is also skipped.
+        The k-th derivative has ``d - k + 1`` control points. Its boundary control
+        points (first of the first segment, last of the last segment) are pinned to
+        zero *only when the k-th derivative itself rests*, i.e. ``terminal_order >=
+        k`` — then they are redundant and skipped. When ``terminal_order < k`` the
+        k-th derivative is free at the ends, so those boundary points MUST be
+        constrained (skipping them would leave, e.g., snap unbounded at the
+        boundary when only velocity/acceleration rest). Interior segments always
+        skip the shared junction control point (index 0), which the previous
+        segment owns. At ``k = 1, 2`` with the default ``terminal_order = 2`` this
+        is exactly the historical velocity/acceleration range.
         """
-        d = self.degree
+        n_k = self.degree - k + 1
         is_first = s_idx == 0
         is_last = s_idx == n_segs - 1
-        if self.add_terminal_velocity_constraint or self.add_terminal_acceleration_constraint:
-            v_start = 1 if is_first else 0
-            v_stop = d - 1 if is_last else d
-            a_start = 1 if is_first else 0
-            a_stop = d - 2 if is_last else d - 1
-        else:
-            v_start = 0 if is_first else 1
-            v_stop = d
-            a_start = 0 if is_first else 1
-            a_stop = d - 1
-        return v_start, v_stop, a_start, a_stop
+        if self.terminal_order >= k:  # k-th derivative pinned to 0 at the ends
+            start = 1 if is_first else 0
+            stop = (n_k - 1) if is_last else n_k
+        else:  # k-th derivative free at the ends -> constrain the boundary points
+            start = 0 if is_first else 1
+            stop = n_k
+        return start, stop
 
     def _build_terminal_rest_constraints(self) -> None:
-        if self.add_terminal_velocity_constraint:
-            # Zero endpoint velocity <=> first two (last two) control points coincide.
-            c = self.prog.AddLinearConstraint(
-                pd.eq(self.untimed_segments[0].points[0], self.untimed_segments[0].points[1])
-            )
-            c.evaluator().set_description("boundary_initial_velocity_zero")
-            c = self.prog.AddLinearConstraint(
-                pd.eq(self.untimed_segments[-1].points[-1], self.untimed_segments[-1].points[-2])
-            )
-            c.evaluator().set_description("boundary_terminal_velocity_zero")
-        if self.untimed_segments[0].degree > 3 and self.add_terminal_acceleration_constraint:
-            # Zero endpoint acceleration <=> first/last three control points colinear-at-rest.
-            c = self.prog.AddLinearConstraint(
-                pd.eq(self.untimed_segments[0].points[0], self.untimed_segments[0].points[2])
-            )
-            c.evaluator().set_description("boundary_initial_acceleration_zero")
-            c = self.prog.AddLinearConstraint(
-                pd.eq(self.untimed_segments[-1].points[-1], self.untimed_segments[-1].points[-3])
-            )
-            c.evaluator().set_description("boundary_terminal_acceleration_zero")
+        # Zero derivatives 1 .. terminal_order at both ends. The j-th derivative
+        # vanishes at the start iff the first j+1 control points coincide; pinning
+        # pts[0] == pts[j] for j = 1 .. terminal_order achieves derivatives 1..m
+        # (mirrored at the end). j = 1 is zero velocity, j = 2 zero acceleration, ...
+        if self.terminal_order < 1:
+            return
+        first = self.untimed_segments[0]
+        last = self.untimed_segments[-1]
+        names = {1: "velocity", 2: "acceleration", 3: "jerk", 4: "snap"}
+        for j in range(1, self.terminal_order + 1):
+            tag = names.get(j, f"d{j}")
+            c = self.prog.AddLinearConstraint(pd.eq(first.points[0], first.points[j]))
+            c.evaluator().set_description(f"boundary_initial_{tag}_zero")
+            c = self.prog.AddLinearConstraint(pd.eq(last.points[-1], last.points[-1 - j]))
+            c.evaluator().set_description(f"boundary_terminal_{tag}_zero")
 
     # ------------------------------------------------------------------ solve
 

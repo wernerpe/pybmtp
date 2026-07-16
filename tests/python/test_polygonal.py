@@ -11,7 +11,7 @@ import pybezier as pb
 import pydrake.all as pd
 import pytest
 
-from pybmt import PolygonalInitializer
+from pybmt import Limits, PolygonalInitializer
 from pybmt.polygonal import compute_set_limit, solve_segment_time_optimal
 
 
@@ -74,7 +74,7 @@ def test_segment_starts_and_ends_at_rest(vel_acc_2d):
 def test_initializer_is_time_contiguous_and_passes_waypoints(vel_acc_2d):
     v, a = vel_acc_2d
     wps = np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]])
-    init = PolygonalInitializer(v, a, trajectory_degree=6)
+    init = PolygonalInitializer(Limits(v, a), trajectory_degree=6)
     traj = init.initialize(wps)
     assert isinstance(traj, pb.CompositeBezierCurve)
     assert len(traj.curves) == 3
@@ -90,7 +90,7 @@ def test_force_same_segment_time(vel_acc_2d):
     v, a = vel_acc_2d
     # Segments of clearly different length -> different natural durations.
     wps = np.array([[0.0, 0.0], [0.2, 0.0], [3.0, 0.0]])
-    traj = PolygonalInitializer(v, a, trajectory_degree=6, force_same_segment_time=True).initialize(
+    traj = PolygonalInitializer(Limits(v, a), trajectory_degree=6, force_same_segment_time=True).initialize(
         wps
     )
     durations = [c.final_time - c.initial_time for c in traj.curves]

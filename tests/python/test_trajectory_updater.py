@@ -12,6 +12,7 @@ import pybezier as pb
 import pydrake.all as pd
 import pytest
 
+from pybmt.limits import Limits
 from pybmt.updaters import TrajectoryUpdater
 
 
@@ -36,14 +37,14 @@ def problem():
 
 
 def make_updater(problem, **kw):
+    limits = kw.pop("limits", Limits(problem["velocity_set"], problem["acceleration_set"]))
     return TrajectoryUpdater(
         problem["source"],
         problem["target"],
         problem["domain"],
         problem["num_segments"],
-        problem["velocity_set"],
-        problem["acceleration_set"],
-        degree=problem["degree"],
+        limits,
+        degree=kw.pop("degree", problem["degree"]),
         **kw,
     )
 
@@ -120,3 +121,91 @@ def test_clear_planes_restores_unconstrained_optimum(problem):
     upd.clear_planes()
     _, restored_time, _, _ = upd.solve({})
     assert restored_time == pytest.approx(base_time, rel=1e-5)
+
+
+# --------------------------------------------------------------- J = 3, 4 (jerk/snap)
+
+
+def test_acceleration_only_ladder_is_minimal(problem):
+    upd = make_updater(problem)
+    assert upd.J == 2
+    assert len(upd.T_powers) == 3  # [1, T, T**2] -- no larger than acceleration needs
+    assert upd.terminal_order == 2  # default matches J: r'(0)=r''(0)=0
+
+
+def test_jerk_snap_grow_ladder_and_respect_limits(problem):
+    limits = Limits(box(1.0, 2), box(2.0, 2), jerk=box(6.0, 2), snap=box(60.0, 2))
+    upd = TrajectoryUpdater(
+        problem["source"], problem["target"], problem["domain"],
+        problem["num_segments"], limits, degree=9,
+    )
+    assert upd.J == 4
+    assert len(upd.T_powers) == 5  # [1, T, T**2, T**3, T**4]
+    traj, seg_time, _, _ = upd.solve({})
+    n = problem["num_segments"]
+    v = traj.derivative(); a = v.derivative(); j = a.derivative(); s = j.derivative()
+    sc = 1.0 / (n * seg_time)
+    assert np.max(np.abs(sample(v))) * sc <= 1.0 + 1e-2
+    assert np.max(np.abs(sample(a))) * sc**2 <= 2.0 + 1e-2
+    assert np.max(np.abs(sample(j))) * sc**3 <= 6.0 + 1e-1
+    assert np.max(np.abs(sample(s))) * sc**4 <= 60.0 + 1.0
+
+
+def test_snap_respected_with_partial_terminal_rest(problem):
+    # J=4 but only velocity+acceleration rest at the ends (terminal_order=2): the
+    # jerk/snap boundary control points are NOT pinned, so they must still be
+    # constrained. Regression for the boundary-skip bug (snap escaping its bound
+    # at the endpoints).
+    limits = Limits(box(1.0, 2), box(2.0, 2), jerk=box(6.0, 2), snap=box(60.0, 2))
+    upd = TrajectoryUpdater(
+        problem["source"], problem["target"], problem["domain"],
+        problem["num_segments"], limits, degree=8, terminal_order=2, continuity_order=4,
+    )
+    traj, seg_time, _, _ = upd.solve({})
+    n = problem["num_segments"]
+    s = traj.derivative().derivative().derivative().derivative()
+    sc = 1.0 / (n * seg_time)
+    assert np.max(np.abs(sample(s))) * sc**4 <= 60.0 + 1e-1
+
+
+def test_symbolic_and_matrix_agree_with_snap(problem):
+    limits = Limits(box(1.0, 2), box(2.0, 2), jerk=box(6.0, 2), snap=box(60.0, 2))
+    kw = dict(degree=9)
+    matrix = TrajectoryUpdater(
+        problem["source"], problem["target"], problem["domain"],
+        problem["num_segments"], limits, use_symbolic_constraints=False, **kw,
+    )
+    symbolic = TrajectoryUpdater(
+        problem["source"], problem["target"], problem["domain"],
+        problem["num_segments"], limits, use_symbolic_constraints=True, **kw,
+    )
+    _, st_m, cost_m, _ = matrix.solve({})
+    _, st_s, cost_s, _ = symbolic.solve({})
+    assert st_m == pytest.approx(st_s, rel=1e-4)
+    assert cost_m == pytest.approx(cost_s, rel=1e-4)
+
+
+def test_continuity_beyond_constrained_derivative_raises(problem):
+    limits = Limits(problem["velocity_set"], problem["acceleration_set"])  # J = 2
+    with pytest.raises(ValueError, match="continuity_order"):
+        TrajectoryUpdater(
+            problem["source"], problem["target"], problem["domain"],
+            problem["num_segments"], limits, degree=problem["degree"], continuity_order=3,
+        )
+
+
+def test_terminal_order_default_and_configurable(problem):
+    # default terminal_order = J = 2 -> zero terminal velocity AND acceleration
+    upd = make_updater(problem)
+    traj, seg_time, _, _ = upd.solve({})
+    n = problem["num_segments"]
+    v = traj.derivative(); a = v.derivative()
+    sc = 1.0 / (n * seg_time)
+    assert np.linalg.norm(sample(v)[0]) * sc < 1e-4       # r'(0) = 0
+    assert np.linalg.norm(sample(a)[0]) * sc**2 < 1e-3    # r''(0) = 0
+    # terminal_order = 1 pins only velocity; still solves.
+    upd1 = make_updater(problem, terminal_order=1)
+    assert upd1.terminal_order == 1
+    traj1, seg_time1, _, _ = upd1.solve({})
+    v1 = traj1.derivative()
+    assert np.linalg.norm(sample(v1)[0]) / (n * seg_time1) < 1e-4

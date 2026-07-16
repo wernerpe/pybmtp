@@ -9,7 +9,7 @@ import numpy as np
 import pydrake.all as pd
 import pytest
 
-from pybmt import EISCSPlanner, SCSResult, solve_scs_minimum_time
+from pybmt import EISCSPlanner, Limits, SCSResult, solve_scs_minimum_time
 from pybmt.collisions import intersect_with_hpolyhedra
 from pybmt.regions import add_segment_splitting_hyperplanes, construct_regions_from_obstacles
 
@@ -82,7 +82,7 @@ def test_obstacle_free_straight_path():
     v, a = vel_acc(dim)
     domain = box([-5, -5], [5, 5])
     path = np.array([[-2.0, 0.0], [0.0, 0.0], [2.0, 0.0]])
-    res = EISCSPlanner().solve(path, [], domain, v, a)
+    res = EISCSPlanner().solve(path, [], domain, Limits(v, a))
 
     assert isinstance(res, SCSResult)
     np.testing.assert_allclose(res.trajectory(res.trajectory.initial_time), path[0], atol=1e-4)
@@ -96,7 +96,7 @@ def test_velocity_acceleration_respected_in_physical_time():
     v, a = vel_acc(dim, vmax=1.0, amax=2.0)
     domain = box([-5, -5], [5, 5])
     path = np.array([[-2.0, 0.0], [0.0, 1.0], [2.0, 0.0]])
-    res = solve_scs_minimum_time(path, [], domain, v, a)
+    res = solve_scs_minimum_time(path, [], domain, Limits(v, a))
 
     # scsplanning returns the trajectory already in physical seconds.
     vel = res.trajectory.derivative()
@@ -112,7 +112,7 @@ def test_avoids_obstacle_with_routed_path():
     obstacle = box([-0.5, -0.6], [0.5, 0.6])
     # Seed waypoints route above the box top (y = 0.6).
     path = np.array([[-2.0, 0.0], [0.0, 1.2], [2.0, 0.0]])
-    res = EISCSPlanner().solve(path, [obstacle], domain, v, a)
+    res = EISCSPlanner().solve(path, [obstacle], domain, Limits(v, a))
 
     hits = intersect_with_hpolyhedra(res.trajectory, [obstacle], tol=1e-3)
     assert hits == {}, f"trajectory collides with obstacle: {hits}"
@@ -124,7 +124,7 @@ def test_polygonal_solver_type():
     v, a = vel_acc(dim)
     domain = box([-5, -5], [5, 5])
     path = np.array([[-2.0, 0.0], [0.0, 0.0], [2.0, 0.0]])
-    res = EISCSPlanner(solver_type="polygonal").solve(path, [], domain, v, a)
+    res = EISCSPlanner(solver_type="polygonal").solve(path, [], domain, Limits(v, a))
     assert res.solver_type == "polygonal"
     np.testing.assert_allclose(res.trajectory(res.trajectory.final_time), path[-1], atol=1e-4)
 
@@ -135,7 +135,7 @@ def test_rejects_non_hpolyhedron_domain():
     domain = pd.Hyperellipsoid.MakeHypersphere(5.0, np.zeros(dim))
     path = np.array([[-2.0, 0.0], [2.0, 0.0]])
     with pytest.raises(ValueError, match="HPolyhedron"):
-        EISCSPlanner().solve(path, [], domain, v, a)
+        EISCSPlanner().solve(path, [], domain, Limits(v, a))
 
 
 def test_rejects_unknown_solver_type():

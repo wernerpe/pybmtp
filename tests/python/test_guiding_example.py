@@ -17,7 +17,7 @@ import numpy as np
 import pydrake.all as pd
 import pytest
 
-from pybmt import MinimumTimePlanner
+from pybmt import Limits, MinimumTimePlanner
 from pybmt.collisions import intersect_with_hpolyhedra
 
 
@@ -156,7 +156,7 @@ def test_guiding_example_bcp_solves_and_renders():
         max_iter=120,
         collision_check_tol=1e-3,
         trajectory_to_plane_tol=1e-3,
-    ).solve(waypoints, obstacles, domain, vel_set, acc_set)
+    ).solve(waypoints, obstacles, domain, Limits(vel_set, acc_set))
 
     # Final trajectory must be collision-free and hit start/goal.
     hits = intersect_with_hpolyhedra(res.feasible_trajectories[-1], obstacles, tol=1e-3)

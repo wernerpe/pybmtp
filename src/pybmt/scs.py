@@ -29,6 +29,7 @@ import numpy as np
 import pybezier as pb
 import pydrake.all as pd
 
+from .limits import Limits
 from .regions import add_segment_splitting_hyperplanes, construct_regions_from_obstacles
 from .result import SCSResult
 
@@ -144,19 +145,27 @@ class EISCSPlanner:
         path: np.ndarray,
         obstacles: List[pd.ConvexSet],
         domain: pd.HPolyhedron,
-        velocity_set: pd.ConvexSet,
-        acceleration_set: pd.ConvexSet,
+        limits: Limits,
         verbose: bool = False,
     ) -> SCSResult:
         """Plan a minimum-time trajectory through ``path`` avoiding ``obstacles``.
 
         ``path`` is an ``(N, dim)`` array of collision-free waypoints; the first
-        and last are the start/goal. ``domain`` bounds the workspace.
+        and last are the start/goal. ``domain`` bounds the workspace. ``limits``
+        must carry only velocity and acceleration -- the ``scsplanning`` backend
+        has no jerk/snap support.
         """
         from scsplanning import nonconvex, polygonal
 
         if not isinstance(domain, pd.HPolyhedron):
             raise ValueError(f"domain must be an HPolyhedron, got {type(domain).__name__}.")
+        if limits.order > 2:
+            raise NotImplementedError(
+                "EISCSPlanner supports only velocity and acceleration limits "
+                f"(scsplanning has no jerk/snap); got Limits with order J={limits.order}. "
+                "Use MinimumTimePlanner for jerk/snap-constrained planning."
+            )
+        velocity_set, acceleration_set = limits.velocity, limits.acceleration
 
         path = np.asarray(path, dtype=float)
         q_init, q_term = path[0], path[-1]
@@ -213,8 +222,7 @@ def solve_scs_minimum_time(
     path: np.ndarray,
     obstacles: List[pd.ConvexSet],
     domain: pd.HPolyhedron,
-    velocity_set: pd.ConvexSet,
-    acceleration_set: pd.ConvexSet,
+    limits: Limits,
     verbose: bool = False,
     **planner_kwargs,
 ) -> SCSResult:
@@ -224,5 +232,5 @@ def solve_scs_minimum_time(
     constructor (e.g. ``trajectory_degree``, ``solver_type``, ``rel_term``).
     """
     return EISCSPlanner(**planner_kwargs).solve(
-        path, obstacles, domain, velocity_set, acceleration_set, verbose=verbose
+        path, obstacles, domain, limits, verbose=verbose
     )
