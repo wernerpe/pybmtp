@@ -23,7 +23,7 @@ from typing import List, Optional
 import numpy as np
 import pydrake.all as pd
 
-from ._solve import solve_in_parallel
+from pybmtp import solve_in_parallel
 
 
 def construct_regions_from_obstacles(

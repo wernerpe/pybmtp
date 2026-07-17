@@ -8,10 +8,11 @@ collision-free, and respect the velocity/acceleration limits in physical time.
 import numpy as np
 import pydrake.all as pd
 import pytest
+from eiscs import EISCSPlanner, SCSResult, solve_scs_minimum_time
+from eiscs.regions import add_segment_splitting_hyperplanes, construct_regions_from_obstacles
 
-from pybmtp import EISCSPlanner, Limits, SCSResult, solve_scs_minimum_time
+from pybmtp import Limits
 from pybmtp.collisions import intersect_with_hpolyhedra
-from pybmtp.regions import add_segment_splitting_hyperplanes, construct_regions_from_obstacles
 
 
 def box(lb, ub):

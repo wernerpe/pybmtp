@@ -1,12 +1,28 @@
 [project]
 name = "pybmtp-examples"
 version = "0"
-description = "Runnable examples for pybmtp."
+description = "Runnable examples for pybmtp (and the SCS/EI baseline)."
 requires-python = ">=3.10"
-dependencies = ["pybmtp", "matplotlib", "meshcat"]
+dependencies = [
+    "pybmtp",
+    "matplotlib",
+    "meshcat",
+    # The SCS/EI baseline (examples/eiscs) needs scsplanning, which is not on
+    # PyPI, so it is pinned by commit here. A direct URL is fine for a uv project
+    # that is never published to PyPI (unlike the core pybmtp package).
+    "scsplanning @ git+https://github.com/TobiaMarcucci/scsplanning.git@d3f885aa2b74a10418de96e61ec2df0bf6ef16b8",
+    "pytest>=7",
+]
 
-# A single uv project shared by every script in this directory: `uv run`
-# resolves pybmtp from the parent checkout (editable) plus matplotlib and meshcat
-# (the village fly-through's viewer), so the examples need no per-file metadata.
+# A single uv project shared by every script in this directory: `uv run` resolves
+# pybmtp from the parent checkout (editable) plus matplotlib, meshcat (the village
+# fly-through's viewer) and scsplanning (the SCS/EI baseline), so the examples
+# need no per-file metadata.
 [tool.uv.sources]
 pybmtp = { path = "..", editable = true }
+
+# The examples double as the SCS/EI baseline's test suite; `pythonpath = ["."]`
+# makes the local `eiscs` / `village` packages importable when pytest runs here.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

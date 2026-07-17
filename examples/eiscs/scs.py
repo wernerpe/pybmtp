@@ -3,7 +3,7 @@
 This is the baseline used in the SCS+EI paper: rather than the biconvex
 trajectory/plane alternation of :class:`~pybmtp.MinimumTimePlanner`, it builds a
 fixed sequence of overlapping collision-free convex regions (one per path
-segment, via exact convex separation in :mod:`pybmtp.regions`) and then solves
+segment, via exact convex separation in :mod:`eiscs.regions`) and then solves
 for the fastest Bezier trajectory through that corridor with the ``scsplanning``
 library.
 
@@ -12,7 +12,7 @@ Two preprocessing steps make the corridor safe for ``scsplanning``:
   1. **Near-zero-length pruning.** ``scsplanning``'s crossing-time bisection
      fails on segments of (near) zero length, so regions whose shortest-path
      edge collapses are dropped.
-  2. **Assumption-1 splitting** (:func:`pybmtp.regions.add_segment_splitting_hyperplanes`):
+  2. **Assumption-1 splitting** (:func:`eiscs.regions.add_segment_splitting_hyperplanes`):
      non-adjacent regions are cut apart so ``region_i`` and ``region_{i+2}`` no
      longer intersect, as ``scsplanning`` requires.
 
@@ -29,7 +29,8 @@ import numpy as np
 import pybezier as pb
 import pydrake.all as pd
 
-from .limits import Limits
+from pybmtp import Limits
+
 from .regions import add_segment_splitting_hyperplanes, construct_regions_from_obstacles
 from .result import SCSResult
 
@@ -79,7 +80,7 @@ def _biconvex_with_pruning(
 
     if verbose and len(pruned) != len(regions):
         print(
-            f"[pybmtp-scs] pruned {len(regions) - len(pruned)} near-zero "
+            f"[eiscs] pruned {len(regions) - len(pruned)} near-zero "
             f"region(s); {len(pruned)} remaining"
         )
 
@@ -175,7 +176,7 @@ class EISCSPlanner:
         regions = construct_regions_from_obstacles(path, obstacles, domain, margin=self.margin)
         region_time = time.time() - t0
         if verbose:
-            print(f"[pybmtp-scs] built {len(regions)} region(s) in {region_time:.3f}s")
+            print(f"[eiscs] built {len(regions)} region(s) in {region_time:.3f}s")
 
         t0 = time.time()
         solved_regions = regions

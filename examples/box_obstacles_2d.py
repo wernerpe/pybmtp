@@ -25,8 +25,9 @@ import time
 
 import numpy as np
 import pydrake.all as pd
+from eiscs import EISCSPlanner
 
-from pybmtp import EISCSPlanner, Limits, MinimumTimePlanner, polygonal_initialization
+from pybmtp import Limits, MinimumTimePlanner, polygonal_initialization
 from pybmtp.collisions import intersect_with_hpolyhedra
 
 

@@ -71,14 +71,20 @@ jobs:
       - name: Install package
         run: |
           python -m pip install --upgrade pip
-          # matplotlib is an examples-only dependency (figure rendering).
-          pip install . matplotlib
+          # matplotlib renders the figures; pytest runs the SCS/EI baseline
+          # tests; scsplanning (not on PyPI) powers the examples/eiscs baseline.
+          pip install . matplotlib pytest \
+            "scsplanning @ git+https://github.com/TobiaMarcucci/scsplanning.git@d3f885aa2b74a10418de96e61ec2df0bf6ef16b8"
 
       - name: Run examples (both planners, headless)
         run: |
           python examples/box_obstacles_2d.py
           python examples/dual_arm_unload.py --planner bmtp --no-meshcat
           python examples/dual_arm_unload.py --planner scs --no-meshcat
+
+      - name: Run the SCS/EI baseline tests
+        run: pytest -q
+        working-directory: examples
 
   # Build and run the native gtest target (Bezier collision kernel) on Linux.
   native:

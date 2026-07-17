@@ -7,7 +7,7 @@ Software accompanying the paper. More details to follow.
 
 `pybmtp` plans time-optimal Bezier trajectories that respect a velocity limit and,
 optionally, acceleration / jerk / snap limits while avoiding convex obstacles. The
-software contains three planners:
+package provides:
 
 - **`MinimumTimePlanner`** — the headline biconvex planner (BMTP): an outer loop
   alternating a trajectory-update SOCP and a separating-plane-update LP, with a
@@ -15,8 +15,13 @@ software contains three planners:
   derivative) and the junction-continuity order are configurable.
 - **`polygonal_initialization`** — a constraint-respecting polygonal warm start
   (straight, rest-to-rest, minimum-time segments under the same limits) used to
-  seed the biconvex planners.
-- **`EISCSPlanner`** — Combination of Edge-Inflation for convex obstacles paired with SCSPlanning as used in the paper.
+  seed the biconvex planner.
+
+The paper's **SCS + Edge-Inflation baseline** (`EISCSPlanner`) is intentionally not
+part of the installable package: it depends on
+[`scsplanning`](https://github.com/TobiaMarcucci/scsplanning), which is not on
+PyPI. It ships with the experiments in [`examples/eiscs`](examples/eiscs) and is
+run by the example scripts below.
 
 The Bezier collision check is a small C++ extension built on Eigen, with
 optional OpenMP parallelism.
@@ -29,9 +34,8 @@ optional OpenMP parallelism.
 pip install .
 ```
 
-This builds the C++ collision kernel and pulls the runtime dependencies:
-`drake` (pydrake) and `pybezier` from PyPI, plus `scsplanning` (pinned to a
-specific upstream commit, since it has no PyPI release).
+This builds the C++ collision kernel and pulls its runtime dependencies —
+`drake` (pydrake) and `pybezier` — both from PyPI.
 
 ## Usage
 
