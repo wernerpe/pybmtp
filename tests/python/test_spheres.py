@@ -12,7 +12,7 @@ import pybezier as pb
 import pydrake.all as pd
 import pytest
 
-from pybmt.collisions import intersect_with_hyperspheres
+from pybmtp.collisions import intersect_with_hyperspheres
 
 
 def _line(p, q, degree=6, t0=0.0, t1=1.0):

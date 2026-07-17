@@ -12,7 +12,7 @@ segment duration ``T`` that minimize total time while satisfying:
 
 All segments share one duration ``T`` (the time grid is uniform). The highest
 constrained derivative order ``J`` (2 = acceleration, 3 = jerk, 4 = snap) is read
-from the :class:`~pybmt.limits.Limits` object, and the rotated-Lorentz "power
+from the :class:`~pybmtp.limits.Limits` object, and the rotated-Lorentz "power
 ladder" ``T_powers = [1, T, T**2, ..., T**J]`` is built *only* that deep -- the
 k-th derivative limit scales with ``T_powers[k]``. With only velocity and
 acceleration limits this is exactly the ``[1, T, T**2]`` program; adding jerk /
@@ -72,7 +72,7 @@ def _plane_constraint_matrix(
     """Numeric matrix form of the half-space constraint ``a(t).r(t)+b(t) <= tol``.
 
     Readable symbolic equivalent (what this expands; see
-    :func:`pybmt.bezier_ops.bezier_dot_product`)::
+    :func:`pybmtp.bezier_ops.bezier_dot_product`)::
 
         prod = bezier_dot_product(a_curve, r_curve) + b_curve   # degree m+n
         prog.AddConstraint(pd.le(prod.points.flatten(), tol))   # convex hull
@@ -139,8 +139,8 @@ class TrajectoryUpdater:
     num_segments:
         Number of Bezier segments.
     limits:
-        :class:`~pybmt.limits.Limits` bundling velocity + acceleration and,
-        optionally, jerk and snap sets. Its :attr:`~pybmt.limits.Limits.order`
+        :class:`~pybmtp.limits.Limits` bundling velocity + acceleration and,
+        optionally, jerk and snap sets. Its :attr:`~pybmtp.limits.Limits.order`
         ``J`` sets the depth of the ``T_powers`` ladder.
     degree:
         Bezier degree of each trajectory segment. Must satisfy

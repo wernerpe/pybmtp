@@ -7,7 +7,7 @@ into a minimum-time trajectory.
 
 The test renders the obstacles, the seed path, and the optimized trajectory to a
 PNG under ``<repo>/test_outputs/`` (git-ignored) so the result can be inspected
-by eye. Set ``PYBMT_TEST_OUTPUT_DIR`` to override the location.
+by eye. Set ``PYBMTP_TEST_OUTPUT_DIR`` to override the location.
 """
 
 import os
@@ -17,12 +17,12 @@ import numpy as np
 import pydrake.all as pd
 import pytest
 
-from pybmt import Limits, MinimumTimePlanner
-from pybmt.collisions import intersect_with_hpolyhedra
+from pybmtp import Limits, MinimumTimePlanner
+from pybmtp.collisions import intersect_with_hpolyhedra
 
 
 def _output_dir() -> pathlib.Path:
-    override = os.environ.get("PYBMT_TEST_OUTPUT_DIR")
+    override = os.environ.get("PYBMTP_TEST_OUTPUT_DIR")
     out = (
         pathlib.Path(override)
         if override

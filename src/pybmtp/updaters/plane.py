@@ -4,7 +4,7 @@ With the trajectory fixed, this finds, for each active ``(segment, obstacle)``
 pair, a degree-``plane_degree`` Bezier plane ``(a(t), b(t))`` that
 
   * supports the obstacle (``a(t).x + b(t) >= 0`` for all ``x`` in the obstacle,
-    enforced via conic duality in :func:`pybmt.geometry.add_supporting_plane`),
+    enforced via conic duality in :func:`pybmtp.geometry.add_supporting_plane`),
   * and separates the trajectory as strongly as possible: minimize the worst-
     case margin ``max_t (a(t).r(t) + b(t))`` over the segment.
 
@@ -38,7 +38,7 @@ def _build_plane_objective_matrix(
     ``margin`` are the decision variables, so the constraint is linear in them.
 
     Readable symbolic equivalent (the form this expands; uses
-    :func:`pybmt.bezier_ops.bezier_dot_product` with symbolic ``a``/``b``)::
+    :func:`pybmtp.bezier_ops.bezier_dot_product` with symbolic ``a``/``b``)::
 
         prod = bezier_dot_product(a_curve, r_curve) + b_curve   # degree m+n
         prog.AddConstraint(pd.le(prod.points.flatten() - margin, 0))

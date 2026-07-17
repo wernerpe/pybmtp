@@ -9,8 +9,8 @@ straight path) actually detour around it.
 import numpy as np
 import pydrake.all as pd
 
-from pybmt import Limits, MinimumTimePlanner, SolveResult, solve_minimum_time
-from pybmt.collisions import intersect_with_hpolyhedra
+from pybmtp import Limits, MinimumTimePlanner, SolveResult, solve_minimum_time
+from pybmtp.collisions import intersect_with_hpolyhedra
 
 
 def box(lb, ub):

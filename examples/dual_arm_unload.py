@@ -17,7 +17,7 @@ configuration-space HPolyhedron built from box Minkowski sums. The FinRay
 gripper is three axis-aligned boxes per arm; their world dimensions and offsets
 from the grasp point are constants captured at the reference configuration.
 
-Each phase is planned independently with pybmt: ``bmtp`` (the biconvex
+Each phase is planned independently with pybmtp: ``bmtp`` (the biconvex
 ``MinimumTimePlanner``, default) or ``scs`` (the ``EISCSPlanner`` baseline). The
 script reports per-phase and total minimum time, verifies each phase is
 collision free, renders a top-view + z-profile figure, and publishes a meshcat
@@ -26,7 +26,7 @@ animation of the collision geometry (pass ``--no-meshcat`` to run headless).
     cd examples && uv run dual_arm_unload.py
     cd examples && uv run dual_arm_unload.py --planner scs
     cd examples && uv run dual_arm_unload.py --no-meshcat
-    # or, with pybmt already installed:
+    # or, with pybmtp already installed:
     python examples/dual_arm_unload.py
 """
 
@@ -39,8 +39,8 @@ import time
 import numpy as np
 import pydrake.all as pd
 
-from pybmt import EISCSPlanner, Limits, MinimumTimePlanner
-from pybmt.collisions import intersect_with_hpolyhedra
+from pybmtp import EISCSPlanner, Limits, MinimumTimePlanner
+from pybmtp.collisions import intersect_with_hpolyhedra
 
 # ===========================================================================
 # Scene constants

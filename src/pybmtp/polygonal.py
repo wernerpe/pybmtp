@@ -2,7 +2,7 @@
 
 Connects consecutive waypoints with straight, rest-to-rest, minimum-time Bezier
 segments stitched onto one timeline. Each segment is a single-segment, plane-free
-:class:`~pybmt.updaters.TrajectoryUpdater` solve under the *same* limits,
+:class:`~pybmtp.updaters.TrajectoryUpdater` solve under the *same* limits,
 continuity and terminal-rest the final trajectory optimization uses, so the warm
 start already satisfies the constraints the planner will enforce.
 """

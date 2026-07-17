@@ -1,12 +1,12 @@
 [project]
-name = "pybmt-examples"
+name = "pybmtp-examples"
 version = "0"
-description = "Runnable examples for pybmt."
+description = "Runnable examples for pybmtp."
 requires-python = ">=3.10"
-dependencies = ["pybmt", "matplotlib", "meshcat"]
+dependencies = ["pybmtp", "matplotlib", "meshcat"]
 
 # A single uv project shared by every script in this directory: `uv run`
-# resolves pybmt from the parent checkout (editable) plus matplotlib and meshcat
+# resolves pybmtp from the parent checkout (editable) plus matplotlib and meshcat
 # (the village fly-through's viewer), so the examples need no per-file metadata.
 [tool.uv.sources]
-pybmt = { path = "..", editable = true }
+pybmtp = { path = "..", editable = true }

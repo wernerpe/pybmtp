@@ -1,15 +1,15 @@
 cmake_minimum_required(VERSION 3.18)
-project(pybmt_native LANGUAGES CXX)
+project(pybmtp_native LANGUAGES CXX)
 
 # ---------------------------------------------------------------------------
 # Build options
 # ---------------------------------------------------------------------------
-#   PYBMT_BUILD_PYTHON  ON  -> build the pybind11 extension (default; this is
+#   PYBMTP_BUILD_PYTHON  ON  -> build the pybind11 extension (default; this is
 #                              what scikit-build-core invokes for a wheel).
-#   PYBMT_BUILD_TESTS   OFF -> build the C++ gtest target (turned on by the
+#   PYBMTP_BUILD_TESTS   OFF -> build the C++ gtest target (turned on by the
 #                              native-test CI job and for local `ctest`).
-option(PYBMT_BUILD_PYTHON "Build the pybind11 extension module" ON)
-option(PYBMT_BUILD_TESTS  "Build the native gtest targets"      OFF)
+option(PYBMTP_BUILD_PYTHON "Build the pybind11 extension module" ON)
+option(PYBMTP_BUILD_TESTS  "Build the native gtest targets"      OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,21 +39,21 @@ find_package(OpenMP QUIET)
 
 # The vendored Bezier geometry + collision kernel, built once as an object
 # library and shared between the Python extension and the gtest target.
-add_library(pybmt_bezier OBJECT cpp/src/bezier_curve.cpp)
-target_include_directories(pybmt_bezier PUBLIC cpp/include)
-target_link_libraries(pybmt_bezier PUBLIC Eigen3::Eigen)
+add_library(pybmtp_bezier OBJECT cpp/src/bezier_curve.cpp)
+target_include_directories(pybmtp_bezier PUBLIC cpp/include)
+target_link_libraries(pybmtp_bezier PUBLIC Eigen3::Eigen)
 if(OpenMP_CXX_FOUND)
-  target_link_libraries(pybmt_bezier PUBLIC OpenMP::OpenMP_CXX)
+  target_link_libraries(pybmtp_bezier PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
 # ---------------------------------------------------------------------------
 # Python extension
 # ---------------------------------------------------------------------------
-if(PYBMT_BUILD_PYTHON)
+if(PYBMTP_BUILD_PYTHON)
   find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
   find_package(pybind11 CONFIG REQUIRED)
 
-  pybind11_add_module(_native cpp/src/bindings.cpp $<TARGET_OBJECTS:pybmt_bezier>)
+  pybind11_add_module(_native cpp/src/bindings.cpp $<TARGET_OBJECTS:pybmtp_bezier>)
   target_include_directories(_native PRIVATE cpp/include)
   target_link_libraries(_native PRIVATE Eigen3::Eigen)
   if(OpenMP_CXX_FOUND)
@@ -61,13 +61,13 @@ if(PYBMT_BUILD_PYTHON)
   endif()
 
   # Install the compiled module into the package directory inside the wheel.
-  install(TARGETS _native DESTINATION pybmt)
+  install(TARGETS _native DESTINATION pybmtp)
 endif()
 
 # ---------------------------------------------------------------------------
 # Native tests
 # ---------------------------------------------------------------------------
-if(PYBMT_BUILD_TESTS)
+if(PYBMTP_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests/cpp)
 endif()

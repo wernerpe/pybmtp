@@ -1,12 +1,12 @@
 /**
- * Implementation of pybmt's Bezier geometry + collision check.
+ * Implementation of pybmtp's Bezier geometry + collision check.
  *
  * Provenance: BezierCurve / CompositeBezierCurve are a C++ translation of
  * https://github.com/TobiaMarcucci/pybezier
  * (commit 0ff3893eae89a0dedff984e1aaf35f71ffb0bbf1). The collision-checking
  * routines and OpenMP fan-out were added on top. Vendored from csdecomp.
  */
-#include "pybmt/bezier_curve.h"
+#include "pybmtp/bezier_curve.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -17,7 +17,7 @@
 #include <numeric>
 #include <unordered_set>
 
-namespace pybmt {
+namespace pybmtp {
 
 double binomial_coefficient(int n, int k) {
   if (k > n || k < 0) return 0.0;
@@ -776,4 +776,4 @@ std::vector<std::vector<int>> IntersectCompositeBezierCurveWithSpheres(
   return intersections;
 }
 
-}  // namespace pybmt
+}  // namespace pybmtp

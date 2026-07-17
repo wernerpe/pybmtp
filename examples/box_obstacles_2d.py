@@ -14,7 +14,7 @@ It solves the scene with both planners and overlays them on one figure:
 Run it (renders to ``examples/_out/box_obstacles_2d.png``):
 
     cd examples && uv run box_obstacles_2d.py
-    # or, in an environment where pybmt is already installed:
+    # or, in an environment where pybmtp is already installed:
     python examples/box_obstacles_2d.py
 """
 
@@ -26,8 +26,8 @@ import time
 import numpy as np
 import pydrake.all as pd
 
-from pybmt import EISCSPlanner, Limits, MinimumTimePlanner, polygonal_initialization
-from pybmt.collisions import intersect_with_hpolyhedra
+from pybmtp import EISCSPlanner, Limits, MinimumTimePlanner, polygonal_initialization
+from pybmtp.collisions import intersect_with_hpolyhedra
 
 
 def build_scene():

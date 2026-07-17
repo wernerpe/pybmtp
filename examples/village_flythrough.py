@@ -7,13 +7,13 @@ exactly as in the paper's village experiment:
 
   * a simple three-corner route around the village is arc-length interpolated
     into a handful of long segments (``arc_length_interpolate``);
-  * pybmt's biconvex ``MinimumTimePlanner`` flies it in minimum time subject to
+  * pybmtp's biconvex ``MinimumTimePlanner`` flies it in minimum time subject to
     velocity, acceleration, jerk **and snap** limits — the snap bound being the
     differential-flatness stand-in for a quadrotor's actuator limit — separating
     against the village obstacles as it goes.
 
 No external planner is used: the obstacles come straight from the village scene
-and pybmt does the rest. It saves a top-view + altitude figure and (unless
+and pybmtp does the rest. It saves a top-view + altitude figure and (unless
 ``--no-meshcat``) publishes a meshcat animation of the drone tracing the path.
 
     cd examples && uv run village_flythrough.py
@@ -30,8 +30,8 @@ import numpy as np
 import pydrake.all as pd
 from village import Village, plot_composite_bezier_curve
 
-from pybmt import Limits, MinimumTimePlanner
-from pybmt.collisions import intersect_with_hpolyhedra
+from pybmtp import Limits, MinimumTimePlanner
+from pybmtp.collisions import intersect_with_hpolyhedra
 
 # --- village + flight configuration (matches the paper's village experiment) ---
 VILLAGE = dict(village_height=10, village_side=34, building_every=7, density=0.3, seed=0)

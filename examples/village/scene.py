@@ -3,7 +3,7 @@
 Adapted from Fast Path Planning (https://github.com/cvxgrp/fastpathplanning) by
 the Stanford University Convex Optimization Group, licensed under Apache-2.0. See
 the ``LICENSE`` file in this directory for the full license text and attribution.
-Modified for pybmt: the unused ``to_csd_plant`` (csdecomp) and ``fpp_to_pybezier``
+Modified for pybmtp: the unused ``to_csd_plant`` (csdecomp) and ``fpp_to_pybezier``
 helpers were removed; the rest of the scene generator + visualizers are reproduced.
 """
 

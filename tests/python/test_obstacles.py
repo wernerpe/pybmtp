@@ -12,7 +12,7 @@ import pybezier as pb
 import pydrake.all as pd
 import pytest
 
-from pybmt.collisions import (
+from pybmtp.collisions import (
     intersect_with_hpolyhedra,
     intersect_with_hyperspheres,
     intersect_with_obstacles,

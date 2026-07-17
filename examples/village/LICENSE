@@ -3,7 +3,7 @@ This directory vendors `scene.py`, adapted from Fast Path Planning
 Optimization Group, which is licensed under the Apache License, Version 2.0.
 
 Only the village scene generator + meshcat visualization helpers were reproduced;
-they were modified for pybmt (unused csdecomp / fpp-conversion helpers removed).
+they were modified for pybmtp (unused csdecomp / fpp-conversion helpers removed).
 The original copyright notices are retained. The full Apache-2.0 text follows.
 
 Copyright (c) the Fast Path Planning authors.

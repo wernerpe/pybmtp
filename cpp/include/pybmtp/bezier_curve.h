@@ -1,12 +1,12 @@
 /**
  * Bezier-curve geometry and the parallel Bezier-vs-HPolyhedron collision check
- * used by pybmt's minimum-time planner.
+ * used by pybmtp's minimum-time planner.
  *
  * Provenance: the BezierCurve / CompositeBezierCurve classes are a C++
  * translation of https://github.com/TobiaMarcucci/pybezier
  * (commit 0ff3893eae89a0dedff984e1aaf35f71ffb0bbf1). The collision-checking
  * routines (BezierCurveHPolyhedronCollisionFree and friends) and the OpenMP
- * fan-out were added on top. Vendored from the csdecomp project so pybmt does
+ * fan-out were added on top. Vendored from the csdecomp project so pybmtp does
  * not depend on csdecomp's GPU stack.
  */
 
@@ -22,7 +22,7 @@
 
 // #include "hpolyhedron.h"
 
-namespace pybmt {
+namespace pybmtp {
 
 /**
  * @brief Compute binomial coefficient C(n, k) = n! / (k! * (n-k)!)
@@ -547,4 +547,4 @@ std::vector<std::vector<int>> IntersectCompositeBezierCurveWithSpheres(
     const std::vector<std::vector<int>>& spheres_to_ignore, double tol = 1e-2,
     bool parallelize = true);
 
-}  // namespace pybmt
+}  // namespace pybmtp

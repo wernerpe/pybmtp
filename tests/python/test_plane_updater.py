@@ -11,8 +11,8 @@ import pybezier as pb
 import pydrake.all as pd
 import pytest
 
-from pybmt.geometry import add_supporting_plane, get_conic_description
-from pybmt.updaters import PlaneUpdater
+from pybmtp.geometry import add_supporting_plane, get_conic_description
+from pybmtp.updaters import PlaneUpdater
 
 
 def box(lb, ub):

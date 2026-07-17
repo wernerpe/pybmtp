@@ -1,5 +1,5 @@
 /**
- * pybind11 bindings for pybmt's native Bezier collision check.
+ * pybind11 bindings for pybmtp's native Bezier collision check.
  *
  * Exposes the minimal surface the Python layer needs:
  *   - BezierCurve / CompositeBezierCurve (so we can round-trip from pybezier),
@@ -8,19 +8,19 @@
  *     inside the BCP outer loop).
  *
  * Eigen <-> numpy and STL <-> Python conversions are provided by pybind11's
- * eigen.h / stl.h headers. The module is imported as ``pybmt._native``.
+ * eigen.h / stl.h headers. The module is imported as ``pybmtp._native``.
  */
 #include <pybind11/eigen.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "pybmt/bezier_curve.h"
+#include "pybmtp/bezier_curve.h"
 
 namespace py = pybind11;
-using namespace pybmt;
+using namespace pybmtp;
 
 PYBIND11_MODULE(_native, m) {
-  m.doc() = "Native Bezier geometry and parallel collision checking for pybmt.";
+  m.doc() = "Native Bezier geometry and parallel collision checking for pybmtp.";
 
   py::class_<BezierCurve>(m, "BezierCurve")
       .def(py::init<const Eigen::MatrixXd&, double, double>(), py::arg("points"),

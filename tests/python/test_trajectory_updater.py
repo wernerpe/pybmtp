@@ -12,8 +12,8 @@ import pybezier as pb
 import pydrake.all as pd
 import pytest
 
-from pybmt.limits import Limits
-from pybmt.updaters import TrajectoryUpdater
+from pybmtp.limits import Limits
+from pybmtp.updaters import TrajectoryUpdater
 
 
 def box(half, dim):

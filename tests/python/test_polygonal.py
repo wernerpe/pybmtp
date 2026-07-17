@@ -10,7 +10,7 @@ import pybezier as pb
 import pydrake.all as pd
 import pytest
 
-from pybmt import Limits, polygonal_initialization
+from pybmtp import Limits, polygonal_initialization
 
 
 def box(half_extent, dim):

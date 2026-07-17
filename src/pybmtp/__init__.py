@@ -1,12 +1,12 @@
-"""pybmt: biconvex minimum-time trajectory planning with Bezier curves.
+"""pybmtp: biconvex minimum-time trajectory planning with Bezier curves.
 
 Public surface (populated as components are ported):
 
-    from pybmt import Limits                       # velocity/acceleration/jerk/snap sets
-    from pybmt import MinimumTimePlanner, solve_minimum_time
-    from pybmt import polygonal_initialization
-    from pybmt import EISCSPlanner, solve_scs_minimum_time
-    from pybmt import SolveResult, SCSResult
+    from pybmtp import Limits                       # velocity/acceleration/jerk/snap sets
+    from pybmtp import MinimumTimePlanner, solve_minimum_time
+    from pybmtp import polygonal_initialization
+    from pybmtp import EISCSPlanner, solve_scs_minimum_time
+    from pybmtp import SolveResult, SCSResult
 """
 
 from ._version import __version__

@@ -9,9 +9,9 @@ import numpy as np
 import pydrake.all as pd
 import pytest
 
-from pybmt import EISCSPlanner, Limits, SCSResult, solve_scs_minimum_time
-from pybmt.collisions import intersect_with_hpolyhedra
-from pybmt.regions import add_segment_splitting_hyperplanes, construct_regions_from_obstacles
+from pybmtp import EISCSPlanner, Limits, SCSResult, solve_scs_minimum_time
+from pybmtp.collisions import intersect_with_hpolyhedra
+from pybmtp.regions import add_segment_splitting_hyperplanes, construct_regions_from_obstacles
 
 
 def box(lb, ub):

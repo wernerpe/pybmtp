@@ -2,7 +2,7 @@
 
 These helpers operate on Bezier control points that may be Drake decision
 variables (``pydrake.symbolic.Variable``), not just floats. That is the whole
-reason pybmt depends on ``pybezier``: it lets us express a constraint like
+reason pybmtp depends on ``pybezier``: it lets us express a constraint like
 ``a(t) . r(t) + b(t) <= tol`` symbolically over the trajectory's control points
 and then hand the resulting affine expressions to a MathematicalProgram.
 

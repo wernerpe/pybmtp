@@ -1,5 +1,5 @@
 /**
- * Native unit tests for pybmt's Bezier geometry + collision kernel.
+ * Native unit tests for pybmtp's Bezier geometry + collision kernel.
  *
  * Covers:
  *   - the convex-hull / subdivision collision predicate (correctness + the
@@ -13,13 +13,13 @@
 #include <chrono>
 #include <random>
 
-#include "pybmt/bezier_curve.h"
+#include "pybmtp/bezier_curve.h"
 
-#if PYBMT_HAVE_OPENMP
+#if PYBMTP_HAVE_OPENMP
 #include <omp.h>
 #endif
 
-using namespace pybmt;
+using namespace pybmtp;
 
 namespace {
 
@@ -184,7 +184,7 @@ TEST(CompositeIntersection, ParallelMatchesSerial) {
   EXPECT_EQ(serial, parallel);
 }
 
-#if PYBMT_HAVE_OPENMP
+#if PYBMTP_HAVE_OPENMP
 TEST(CompositeIntersection, OpenMpAcceleratesIntersection) {
   if (omp_get_max_threads() < 2) {
     GTEST_SKIP() << "Only one OpenMP thread available; cannot measure speedup.";

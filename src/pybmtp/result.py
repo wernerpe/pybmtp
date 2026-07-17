@@ -53,7 +53,7 @@ class SolveResult:
 
 @dataclass
 class SCSResult:
-    """Outcome of an :class:`~pybmt.scs.EISCSPlanner` solve.
+    """Outcome of an :class:`~pybmtp.scs.EISCSPlanner` solve.
 
     Attributes
     ----------

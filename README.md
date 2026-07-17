@@ -1,11 +1,11 @@
-# PyBMT: Biconvex Minimum-time Trajectory Planning Around Convex Obstacles
+# PyBMTP: Biconvex Minimum-time Trajectory Planning Around Convex Obstacles
 
-[![CI](https://github.com/wernerpe/pybmt/actions/workflows/ci.yml/badge.svg)](https://github.com/wernerpe/pybmt/actions/workflows/ci.yml)
-[![Lint](https://github.com/wernerpe/pybmt/actions/workflows/lint.yaml/badge.svg)](https://github.com/wernerpe/pybmt/actions/workflows/lint.yaml)
+[![CI](https://github.com/wernerpe/pybmtp/actions/workflows/ci.yml/badge.svg)](https://github.com/wernerpe/pybmtp/actions/workflows/ci.yml)
+[![Lint](https://github.com/wernerpe/pybmtp/actions/workflows/lint.yaml/badge.svg)](https://github.com/wernerpe/pybmtp/actions/workflows/lint.yaml)
 
 Software accompanying the paper. More details to follow.
 
-`pybmt` plans time-optimal Bezier trajectories that respect a velocity limit and,
+`pybmtp` plans time-optimal Bezier trajectories that respect a velocity limit and,
 optionally, acceleration / jerk / snap limits while avoiding convex obstacles. The
 software contains three planners:
 
@@ -23,7 +23,7 @@ optional OpenMP parallelism.
 
 ## Install
 
-`pybmt` is not yet on PyPI; install it from a checkout of this repository:
+`pybmtp` is not yet on PyPI; install it from a checkout of this repository:
 
 ```bash
 pip install .
@@ -42,7 +42,7 @@ highest limit you give.
 
 ```python
 import numpy as np, pydrake.all as pd
-from pybmt import Limits, MinimumTimePlanner
+from pybmtp import Limits, MinimumTimePlanner
 
 ball = lambda r: pd.Hyperellipsoid.MakeHypersphere(r, np.zeros(3))
 limits = Limits(velocity=ball(5.0), acceleration=ball(5.0),
@@ -89,7 +89,7 @@ pytest -q
 a test build, compile it, and run `ctest`:
 
 ```bash
-cmake -S . -B build-cpp -DPYBMT_BUILD_TESTS=ON -DPYBMT_BUILD_PYTHON=OFF -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build-cpp -DPYBMTP_BUILD_TESTS=ON -DPYBMTP_BUILD_PYTHON=OFF -DCMAKE_BUILD_TYPE=Release
 cmake --build build-cpp --parallel
 ctest --test-dir build-cpp --output-on-failure
 ```

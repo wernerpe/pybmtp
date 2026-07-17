@@ -3,13 +3,13 @@
 The planner alternates two convex sub-problems until the trajectory stops
 getting faster:
 
-  1. **Trajectory update** (:class:`~pybmt.updaters.TrajectoryUpdater`): with the
+  1. **Trajectory update** (:class:`~pybmtp.updaters.TrajectoryUpdater`): with the
      current separating planes fixed, solve a SOCP for the fastest trajectory
      that satisfies the velocity/acceleration/continuity constraints and stays
      on the safe side of every plane.
-  2. **Collision check** (:mod:`pybmt.collisions`): test the candidate against
+  2. **Collision check** (:mod:`pybmtp.collisions`): test the candidate against
      the obstacles. Segments that are not provably clear get *tagged*.
-  3. **Plane update** (:class:`~pybmt.updaters.PlaneUpdater`): for each tagged
+  3. **Plane update** (:class:`~pybmtp.updaters.PlaneUpdater`): for each tagged
      ``(segment, obstacle)`` pair, compute a separating plane that keeps the
      last *feasible* trajectory safe, and feed it back into step 1.
 
@@ -203,7 +203,7 @@ class MinimumTimePlanner:
                 feasible_wall_times.append(time.time() - t_start)
                 if verbose:
                     print(
-                        f"[pybmt] feasible: T={segment_time * num_segments:.3f}s "
+                        f"[pybmtp] feasible: T={segment_time * num_segments:.3f}s "
                         f"rel_improvement={rel_improvement:.4f}"
                     )
                 if rel_improvement < self.rel_term:
@@ -215,7 +215,7 @@ class MinimumTimePlanner:
                 all_planes = dict(new_planes)
             else:
                 if verbose:
-                    print(f"[pybmt] {len(new_tagged)}/{num_segments} segments in collision")
+                    print(f"[pybmtp] {len(new_tagged)}/{num_segments} segments in collision")
                 new_planes = plane_updater.compute_planes(new_tagged, r_feasible)
                 all_planes.update(new_planes)
             timing["plane_update"] += time.time() - t0

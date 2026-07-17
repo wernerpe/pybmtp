@@ -9,7 +9,11 @@ import numpy as np
 import pybezier as pb
 import pydrake.all as pd
 
-from pybmt.collisions import curve_is_collision_free, intersect_with_hpolyhedra, to_native_composite
+from pybmtp.collisions import (
+    curve_is_collision_free,
+    intersect_with_hpolyhedra,
+    to_native_composite,
+)
 
 
 def box(lb, ub):

@@ -3,7 +3,7 @@ requires = ["scikit-build-core>=0.9", "pybind11>=2.12"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "pybmt"
+name = "pybmtp"
 version = "0.1.0"
 description = "Biconvex minimum-time trajectory planning with Bezier curves."
 readme = "README.md"
@@ -26,9 +26,9 @@ classifiers = [
 dependencies = [
     "numpy>=1.23",
     "scipy>=1.9",
-    # 1.33.0 is the last drake wheel built for macOS 13; pybmt's only newer-API
+    # 1.33.0 is the last drake wheel built for macOS 13; pybmtp's only newer-API
     # use was solvers.SolveInParallel, which now falls back to a serial solve
-    # (see pybmt/_solve.py) so this floor stays installable on macOS 13 (arm64).
+    # (see pybmtp/_solve.py) so this floor stays installable on macOS 13 (arm64).
     "drake>=1.33; sys_platform != 'darwin' or platform_machine != 'x86_64'",
     # drake stopped publishing macOS x86_64 (Intel Mac) wheels after 1.34.0, and
     # there is no sdist, so cap Intel-macOS resolution at the last wheel.
@@ -36,7 +36,7 @@ dependencies = [
     "pybezier>=0.1.4",
     # scsplanning is not published to PyPI; pin it to a specific commit of the
     # upstream repo. (A direct URL means the project can't be uploaded to PyPI
-    # as-is, but it makes `pip install` of pybmt reproducible from source.)
+    # as-is, but it makes `pip install` of pybmtp reproducible from source.)
     "scsplanning @ git+https://github.com/TobiaMarcucci/scsplanning.git@d3f885aa2b74a10418de96e61ec2df0bf6ef16b8",
 ]
 
@@ -44,8 +44,8 @@ dependencies = [
 test = ["pytest>=7"]
 
 [project.urls]
-Homepage = "https://github.com/wernerpe/pybmt"
-Repository = "https://github.com/wernerpe/pybmt"
+Homepage = "https://github.com/wernerpe/pybmtp"
+Repository = "https://github.com/wernerpe/pybmtp"
 
 # ---------------------------------------------------------------------------
 # scikit-build-core: drives the CMake build of the pybind11 extension.
@@ -53,9 +53,9 @@ Repository = "https://github.com/wernerpe/pybmt"
 [tool.scikit-build]
 minimum-version = "0.9"
 build-dir = "build/{wheel_tag}"
-wheel.packages = ["src/pybmt"]
+wheel.packages = ["src/pybmtp"]
 # Only the Python extension is built for a wheel; the gtest target stays off.
-cmake.args = ["-DPYBMT_BUILD_PYTHON=ON", "-DPYBMT_BUILD_TESTS=OFF"]
+cmake.args = ["-DPYBMTP_BUILD_PYTHON=ON", "-DPYBMTP_BUILD_TESTS=OFF"]
 
 [tool.scikit-build.cmake.define]
 CMAKE_BUILD_TYPE = "Release"

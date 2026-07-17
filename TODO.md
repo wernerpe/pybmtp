@@ -8,5 +8,5 @@
 - [todo] Change the polygonal initializer to use the biconvex trajectory update
   with no planes (`TrajectoryUpdater.solve({})`) instead of the SCS 1D
   projection, reusing a single `TrajectoryUpdater` instance across segments (the
-  trajectory degrees match). See `TODO(pete)` in `src/pybmt/polygonal.py`. This
+  trajectory degrees match). See `TODO(pete)` in `src/pybmtp/polygonal.py`. This
   would also let the warm start honor jerk/snap, which the 1D projection can't.

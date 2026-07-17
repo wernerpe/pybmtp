@@ -1,6 +1,6 @@
 """Bezier-curve collision checking against convex obstacles.
 
-This is the Python face of the vendored C++ kernel (``pybmt._native``). The
+This is the Python face of the vendored C++ kernel (``pybmtp._native``). The
 kernel works on its own lightweight ``BezierCurve`` / ``CompositeBezierCurve``
 representation, so the helpers here round-trip ``pybezier`` curves into native
 curves (a cheap control-point + time-interval copy) and hand off to the
