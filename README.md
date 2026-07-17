@@ -3,6 +3,10 @@
 [![CI](https://github.com/wernerpe/pybmtp/actions/workflows/ci.yml/badge.svg)](https://github.com/wernerpe/pybmtp/actions/workflows/ci.yml)
 [![Lint](https://github.com/wernerpe/pybmtp/actions/workflows/lint.yaml/badge.svg)](https://github.com/wernerpe/pybmtp/actions/workflows/lint.yaml)
 
+> [!WARNING]
+> **Under construction.** This repository is an active work in progress; the API,
+> layout, and contents may change without notice.
+
 Software accompanying the paper. More details to follow.
 
 `pybmtp` plans time-optimal Bezier trajectories that respect a velocity limit and,
@@ -16,12 +20,8 @@ package provides:
 - **`polygonal_initialization`** — a constraint-respecting polygonal warm start
   (straight, rest-to-rest, minimum-time segments under the same limits) used to
   seed the biconvex planner.
-
-The paper's **SCS + Edge-Inflation baseline** (`EISCSPlanner`) is intentionally not
-part of the installable package: it depends on
-[`scsplanning`](https://github.com/TobiaMarcucci/scsplanning), which is not on
-PyPI. It ships with the experiments in [`examples/eiscs`](examples/eiscs) and is
-run by the example scripts below.
+- **[`examples/`](examples)** — runnable demos, including the SCS + Edge-Inflation
+  baseline (`EISCSPlanner`) from the paper.
 
 The Bezier collision check is a small C++ extension built on Eigen, with
 optional OpenMP parallelism.
@@ -81,8 +81,8 @@ uv run village_flythrough.py --no-meshcat           # snap-constrained UAV fligh
 
 The suite has two parts, mirroring CI.
 
-**Python tests** (planners, collision wrapper, examples). Install the test
-extras and run `pytest`:
+**Python tests** (the BMTP planner, polygonal warm start, and collision wrapper).
+Install the test extras and run `pytest`:
 
 ```bash
 pip install -e '.[test]'
