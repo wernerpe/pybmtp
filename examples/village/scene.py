@@ -79,13 +79,48 @@ def n_colors_random(n=33, rgbs_ret=False):
     return random.sample(colors, n)
 
 
+class _NullNode:
+    """No-op stand-in for a meshcat node, used when the scene is built headless.
+
+    The scene generator records its solid geometry into ``EnvironmentVisualizer.L``
+    / ``.U`` as a side effect of *drawing* it, so building without a viewer means
+    keeping every ``set_*`` call and discarding the visuals -- not skipping the
+    calls, which would skip the geometry (and shift the RNG) with them.
+    """
+
+    def __getitem__(self, name):
+        return self
+
+    def set_object(self, *args, **kwargs):
+        pass
+
+    def set_transform(self, *args, **kwargs):
+        pass
+
+    def set_property(self, *args, **kwargs):
+        pass
+
+
 class EnvironmentVisualizer(Visualizer):
 
-    def __init__(self):
-        super().__init__()
-        self["/Background"].set_property("visible", False)
+    def __init__(self, headless=False):
+        # headless skips Visualizer.__init__ entirely: no zmq server, no browser
+        # window, nothing to clean up. Every node lookup lands on _NullNode instead.
+        self.headless = headless
+        if headless:
+            self._null_node = _NullNode()
+        else:
+            super().__init__()
+            self["/Background"].set_property("visible", False)
         self.L = []
         self.U = []
+
+    def __getitem__(self, path):
+        return self._null_node if self.headless else super().__getitem__(path)
+
+    def delete(self):
+        if not self.headless:
+            super().delete()
 
     def cube(self, name, c, r, color=(1, 0, 0), opacity=1):
         c = np.array(c)
@@ -141,8 +176,8 @@ def _sphere(vis, name, pos, radius, color, opacity):
 
 
 class Village(EnvironmentVisualizer):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, headless=False):
+        super().__init__(headless=headless)
         self["/Grid"].set_property("visible", False)
 
     def ground(self, side, color=(1, 1, 1)):

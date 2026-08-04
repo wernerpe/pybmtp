@@ -13,8 +13,10 @@ exactly as in the paper's village experiment:
     against the village obstacles as it goes.
 
 No external planner is used: the obstacles come straight from the village scene
-and pybmtp does the rest. It saves a top-view + altitude figure and (unless
-``--no-meshcat``) publishes a meshcat animation of the drone tracing the path.
+and pybmtp does the rest. It renders a top-view + altitude figure to
+``examples/_out/village_flythrough.png`` and, unless ``--no-meshcat``, publishes a
+meshcat animation of the drone tracing the path. ``--no-meshcat`` is genuinely
+headless: the scene is built without opening a viewer at all.
 
     cd examples && uv run village_flythrough.py
     cd examples && uv run village_flythrough.py --no-meshcat
@@ -116,17 +118,21 @@ def animate_meshcat(village, trajectory, fps=30):
     plot_composite_bezier_curve(village, trajectory, "flight", color=[0.1, 0.3, 1.0], size=0.06)
     village["drone"].set_object(Sphere(0.25), MeshLambertMaterial(color="0x1133ff"))
 
-    T = trajectory.final_time
-    n = max(2, int(T * fps))
+    t0, t1 = trajectory.initial_time, trajectory.final_time
+    n = max(2, int((t1 - t0) * fps))
     anim = Animation()
-    for k in range(n + 1):
+    # linspace pins the last sample to final_time exactly; computing it as
+    # t1 * k / n instead rounds a hair past the end for ~5% of durations, which
+    # walks off the last Bezier segment.
+    for k, t in enumerate(np.linspace(t0, t1, n + 1)):
         with anim.at_frame(village, k) as frame:
-            frame["drone"].set_transform(translation_matrix(trajectory(T * k / n)))
+            frame["drone"].set_transform(translation_matrix(trajectory(t)))
     village.set_animation(anim)
 
 
-def main(show_meshcat=True, out="village_flythrough.png"):
-    village = Village()
+def main(show_meshcat=True, out=None):
+    # Without the viewer the scene is built headless -- same geometry, no server.
+    village = Village(headless=not show_meshcat)
     village.build(**VILLAGE)
     obstacles = village_obstacles(village)
     domain = village.domain
@@ -168,7 +174,9 @@ def main(show_meshcat=True, out="village_flythrough.png"):
         f"collision-free: {hits == {}}"
     )
 
-    fig_path = pathlib.Path(out).resolve()
+    default_out = pathlib.Path(__file__).resolve().parent / "_out" / "village_flythrough.png"
+    fig_path = pathlib.Path(out).resolve() if out else default_out
+    fig_path.parent.mkdir(parents=True, exist_ok=True)
     render_figure(fig_path, village, waypoints, res.trajectory)
     print(f"[village] figure -> {fig_path}")
 
@@ -181,6 +189,6 @@ def main(show_meshcat=True, out="village_flythrough.png"):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--no-meshcat", action="store_true", help="run headless (figure only)")
-    ap.add_argument("--out", default="village_flythrough.png", help="output figure path")
+    ap.add_argument("--out", default=None, help="output figure path (default: examples/_out/…)")
     args = ap.parse_args()
     main(show_meshcat=not args.no_meshcat, out=args.out)
