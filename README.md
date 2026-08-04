@@ -1,5 +1,7 @@
 # PyBMTP: Biconvex Minimum-time Trajectory Planning Around Convex Obstacles
 
+[![arXiv](https://img.shields.io/badge/arXiv-coming--soon-b31b1b.svg)](https://arxiv.org/abs/XXXX.XXXXX)
+[![Website](https://img.shields.io/badge/website-bmtp-blue.svg)](https://wernerpe.github.io/bmtp-website/)
 [![CI](https://github.com/wernerpe/pybmtp/actions/workflows/ci.yml/badge.svg)](https://github.com/wernerpe/pybmtp/actions/workflows/ci.yml)
 [![Lint](https://github.com/wernerpe/pybmtp/actions/workflows/lint.yaml/badge.svg)](https://github.com/wernerpe/pybmtp/actions/workflows/lint.yaml)
 
@@ -97,3 +99,28 @@ cmake -S . -B build-cpp -DPYBMTP_BUILD_TESTS=ON -DPYBMTP_BUILD_PYTHON=OFF -DCMAK
 cmake --build build-cpp --parallel
 ctest --test-dir build-cpp --output-on-failure
 ```
+
+## Citation
+
+If you use this software in your research, please cite the accompanying paper:
+
+```bibtex
+@article{werner2026biconvex,
+  author  = {Werner, Peter and Marcucci, Tobia and Rus, Daniela},
+  title   = {Biconvex Optimization for Smooth Minimum-Time Trajectories around Convex Obstacles},
+  journal = {arXiv preprint},
+  year    = {2026},
+}
+```
+
+## Funding
+
+We are very grateful for the funding provided by the Office of Naval Research,
+Award Number N00014-23-1-2354. Research was also sponsored in part by the
+Department of the Air Force Artificial Intelligence Accelerator and was
+accomplished under Cooperative Agreement Number FA8750-19-2-1000. The views and
+conclusions contained in this document are those of the authors and should not
+be interpreted as representing the official policies, either expressed or
+implied, of the Department of the Air Force or the U.S. Government. The U.S.
+Government is authorized to reproduce and distribute reprints for Government
+purposes notwithstanding any copyright notation herein.
