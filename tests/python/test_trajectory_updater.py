@@ -208,6 +208,87 @@ def test_symbolic_and_matrix_agree_with_snap(problem):
     assert cost_m == pytest.approx(cost_s, rel=1e-4)
 
 
+# ------------------------------------------------- re-aiming a built program (set_endpoints)
+
+NEW_SOURCE = np.array([-1.0, 2.0])
+NEW_TARGET = np.array([2.0, -1.5])
+
+
+@pytest.mark.parametrize("symbolic", [False, True])
+@pytest.mark.parametrize("num_segments", [1, 3])
+@pytest.mark.parametrize("on_segment", [False, True])
+def test_set_endpoints_matches_a_fresh_build(problem, on_segment, num_segments, symbolic):
+    # set_endpoints rewrites only the endpoint-dependent coefficients, so the
+    # re-aimed program must *be* the program a fresh construction would have built.
+    # Any row left describing the old endpoints moves the solution.
+    problem = {**problem, "num_segments": num_segments}
+    limits = Limits(problem["velocity_set"], problem["acceleration_set"])
+    kw = dict(on_segment=on_segment, use_symbolic_constraints=symbolic)
+
+    reused = make_updater(problem, **kw)
+    reused.solve({})  # solve at the original endpoints first -- nothing may carry over
+    reused.set_endpoints(NEW_SOURCE, NEW_TARGET)
+    traj_r, time_r, cost_r, _ = reused.solve({})
+
+    fresh = TrajectoryUpdater(
+        NEW_SOURCE,
+        NEW_TARGET,
+        problem["domain"],
+        num_segments,
+        limits,
+        degree=problem["degree"],
+        **kw,
+    )
+    traj_f, time_f, cost_f, _ = fresh.solve({})
+
+    assert time_r == pytest.approx(time_f, rel=1e-12)
+    assert cost_r == pytest.approx(cost_f, rel=1e-12)
+    for seg_r, seg_f in zip(traj_r.curves, traj_f.curves):
+        np.testing.assert_allclose(seg_r.points, seg_f.points, atol=1e-12)
+
+
+def test_set_endpoints_moves_the_boundary_conditions(problem):
+    upd = make_updater(problem)
+    upd.set_endpoints(NEW_SOURCE, NEW_TARGET)
+    traj, _, _, _ = upd.solve({})
+    np.testing.assert_allclose(traj(traj.initial_time), NEW_SOURCE, atol=1e-6)
+    np.testing.assert_allclose(traj(traj.final_time), NEW_TARGET, atol=1e-6)
+
+
+def test_set_endpoints_moves_the_on_segment_line(problem):
+    # Under on_segment the line enters the constraint *matrix* (via source - target),
+    # not just its right-hand side, so re-aiming has to refresh both. A program that
+    # refreshed only the offset would hold the curve on the old line.
+    upd = make_updater(problem, on_segment=True)
+    upd.solve({})
+    upd.set_endpoints(NEW_SOURCE, NEW_TARGET)
+    traj, _, _, _ = upd.solve({})
+    u = (NEW_TARGET - NEW_SOURCE) / np.linalg.norm(NEW_TARGET - NEW_SOURCE)
+    xy = sample(traj)
+    perp = xy - NEW_SOURCE - np.outer((xy - NEW_SOURCE) @ u, u)
+    assert np.max(np.linalg.norm(perp, axis=1)) < 1e-9
+
+
+def test_set_endpoints_does_not_accumulate(problem):
+    # Re-aiming overwrites rather than composes: coming back to the original
+    # endpoints must reproduce the original solution exactly.
+    upd = make_updater(problem, on_segment=True)
+    traj0, time0, _, _ = upd.solve({})
+    upd.set_endpoints(NEW_SOURCE, NEW_TARGET)
+    upd.solve({})
+    upd.set_endpoints(problem["source"], problem["target"])
+    traj1, time1, _, _ = upd.solve({})
+    assert time1 == pytest.approx(time0, rel=1e-12)
+    for seg0, seg1 in zip(traj0.curves, traj1.curves):
+        np.testing.assert_allclose(seg0.points, seg1.points, atol=1e-12)
+
+
+def test_set_endpoints_rejects_wrong_dimension(problem):
+    upd = make_updater(problem)
+    with pytest.raises(ValueError, match="length 2"):
+        upd.set_endpoints(np.zeros(3), np.ones(3))
+
+
 def test_continuity_beyond_constrained_derivative_raises(problem):
     limits = Limits(problem["velocity_set"], problem["acceleration_set"])  # J = 2
     with pytest.raises(ValueError, match="continuity_order"):

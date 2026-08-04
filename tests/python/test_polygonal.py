@@ -11,6 +11,7 @@ import pydrake.all as pd
 import pytest
 
 from pybmtp import Limits, polygonal_initialization
+from pybmtp.updaters import TrajectoryUpdater
 
 
 def box(half_extent, dim):
@@ -81,6 +82,36 @@ def test_velocity_only_warm_start():
     assert len(traj.curves) == 2
     np.testing.assert_allclose(traj(traj.initial_time), [0.0, 0.0], atol=1e-6)
     np.testing.assert_allclose(traj(traj.final_time), [2.0, 1.0], atol=1e-6)
+
+
+def test_matches_a_fresh_updater_per_segment(limits_2d):
+    # The warm start re-aims one updater across waypoint pairs rather than building
+    # one per pair. Oracle: the same sequence of solves with a fresh updater each
+    # time -- the two must agree segment for segment, duration included.
+    wps = np.array([[0.0, 0.0], [2.0, 1.0], [1.0, 3.0], [-1.0, 2.0]])
+    traj = polygonal_initialization(wps, DOMAIN, limits_2d, degree=6)
+
+    expected = []
+    for a, b in zip(wps[:-1], wps[1:]):
+        updater = TrajectoryUpdater(a, b, DOMAIN, 1, limits_2d, degree=6, on_segment=True)
+        curve, segment_time, _, _ = updater.solve({})
+        expected.append((curve.curves[0].points, segment_time))
+
+    assert len(traj.curves) == len(expected)
+    for seg, (points, segment_time) in zip(traj.curves, expected):
+        np.testing.assert_allclose(seg.points, points, atol=1e-12)
+        assert seg.final_time - seg.initial_time == pytest.approx(segment_time, rel=1e-12)
+
+
+def test_coincident_waypoints_become_holds(limits_2d):
+    # A repeated waypoint is a zero-length hold that never reaches the solver. Leading
+    # with one also exercises the shared updater being built on a later pair.
+    wps = np.array([[0.0, 0.0], [0.0, 0.0], [1.0, 0.0], [1.0, 0.0]])
+    traj = polygonal_initialization(wps, DOMAIN, limits_2d, degree=6)
+    assert len(traj.curves) == 3
+    np.testing.assert_allclose(traj.curves[0].points, np.zeros((7, 2)), atol=1e-12)
+    np.testing.assert_allclose(traj.curves[2].points, np.tile([1.0, 0.0], (7, 1)), atol=1e-12)
+    np.testing.assert_allclose(traj(traj.final_time), [1.0, 0.0], atol=1e-6)
 
 
 def test_stays_on_each_waypoint_segment(limits_2d):

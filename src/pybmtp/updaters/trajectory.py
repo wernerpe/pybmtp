@@ -127,7 +127,10 @@ class TrajectoryUpdater:
     Construction wires up the time-invariant constraints (boundary, derivative
     limits, continuity); planes are added per :meth:`solve` call and can be
     removed with :meth:`clear_planes`, so the same program object is reused
-    across biconvex iterations.
+    across biconvex iterations. :meth:`set_endpoints` additionally re-aims a
+    built program at a new source/target, so a sequence of otherwise-identical
+    problems (the polygonal warm start's per-waypoint segments) needs only one
+    program build.
 
     Parameters
     ----------
@@ -223,6 +226,7 @@ class TrajectoryUpdater:
         self._solver_opts = pd.SolverOptions()
         self._solver_opts.SetOption(pd.CommonSolverOption.kPrintToConsole, False)
         self.added_plane_constraints: list = []
+        self._segment_constraints: list = []  # on_segment bindings, re-aimed by set_endpoints
 
         self._build_time_variables()
         self._build_segments()
@@ -297,14 +301,61 @@ class TrajectoryUpdater:
         # curve on it, so a collision-free segment yields a collision-free trajectory.
         z = self.prog.NewContinuousVariables(1, "z")[0]
         self.prog.AddBoundingBoxConstraint(0.0, 1.0, z)
-        A = np.hstack([np.eye(self.dim), -(self.source - self.target).reshape(-1, 1)])
-        self.prog.AddLinearEqualityConstraint(A, self.target, np.concatenate([cp, [z]]))
+        A, b = self._segment_coefficients()
+        self._segment_constraints.append(
+            self.prog.AddLinearEqualityConstraint(A, b, np.concatenate([cp, [z]]))
+        )
+
+    def _segment_coefficients(self) -> Tuple[np.ndarray, np.ndarray]:
+        """``(A, b)`` of the on-segment row ``[I | -(source-target)] @ [cp; z] == target``."""
+        return (
+            np.hstack([np.eye(self.dim), -(self.source - self.target).reshape(-1, 1)]),
+            self.target,
+        )
 
     def _build_boundary_constraints(self) -> None:
-        c = self.prog.AddLinearConstraint(pd.eq(self.untimed_segments[0].points[0], self.source))
-        c.evaluator().set_description("boundary_initial_position")
-        c = self.prog.AddLinearConstraint(pd.eq(self.untimed_segments[-1].points[-1], self.target))
-        c.evaluator().set_description("boundary_terminal_position")
+        # Written as I @ endpoint_cp == source/target rather than symbolically, so
+        # that re-aiming the program is a right-hand-side swap (see set_endpoints).
+        eye = np.eye(self.dim)
+        self._initial_position = self.prog.AddLinearEqualityConstraint(
+            eye, self.source, self.untimed_segments[0].points[0]
+        )
+        self._initial_position.evaluator().set_description("boundary_initial_position")
+        self._terminal_position = self.prog.AddLinearEqualityConstraint(
+            eye, self.target, self.untimed_segments[-1].points[-1]
+        )
+        self._terminal_position.evaluator().set_description("boundary_terminal_position")
+
+    def set_endpoints(self, source: np.ndarray, target: np.ndarray) -> None:
+        """Re-aim the existing program at a new ``source -> target`` pair.
+
+        Only the two boundary-position constraints and, under ``on_segment``, the
+        on-the-line constraints depend on the endpoints; the derivative limits,
+        continuity and terminal-rest blocks do not. Overwriting those few
+        coefficients in place leaves exactly the program a fresh construction with
+        the same endpoints would have built, for a fraction of the build cost --
+        which is what lets the polygonal warm start solve every waypoint pair with
+        a single updater.
+
+        Plane constraints from earlier :meth:`solve` calls still describe the old
+        geometry; :meth:`clear_planes` first if any are attached.
+        """
+        source = np.asarray(source, float)
+        target = np.asarray(target, float)
+        if source.shape != (self.dim,) or target.shape != (self.dim,):
+            raise ValueError(
+                f"source and target must both have length {self.dim}; got shapes "
+                f"{source.shape} and {target.shape}."
+            )
+        self.source, self.target = source, target
+
+        eye = np.eye(self.dim)
+        self._initial_position.evaluator().UpdateCoefficients(eye, self.source)
+        self._terminal_position.evaluator().UpdateCoefficients(eye, self.target)
+        if self.on_segment:
+            A, b = self._segment_coefficients()
+            for c in self._segment_constraints:
+                c.evaluator().UpdateCoefficients(A, b)
 
     # ---------------------------------------------- limits + continuity (fast)
 

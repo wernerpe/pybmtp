@@ -4,7 +4,9 @@ Connects consecutive waypoints with straight, rest-to-rest, minimum-time Bezier
 segments stitched onto one timeline. Each segment is a single-segment, plane-free
 :class:`~pybmtp.updaters.TrajectoryUpdater` solve under the *same* limits,
 continuity and terminal-rest the final trajectory optimization uses, so the warm
-start already satisfies the constraints the planner will enforce.
+start already satisfies the constraints the planner will enforce. Consecutive
+segments differ only in their endpoints, so they share one updater, re-aimed via
+:meth:`~pybmtp.updaters.TrajectoryUpdater.set_endpoints`.
 """
 
 from __future__ import annotations
@@ -50,23 +52,30 @@ def polygonal_initialization(
     if waypoints.ndim != 2 or len(waypoints) < 2:
         raise ValueError("waypoints must be an (N, dim) array with N >= 2")
 
+    # Every segment poses the same program bar its two endpoints, so one updater is
+    # built (lazily, on the first non-degenerate pair) and re-aimed per pair rather
+    # than rebuilt -- the build dominates the per-segment cost.
+    updater: Optional[TrajectoryUpdater] = None
     control_points, durations = [], []
     for start, end in zip(waypoints[:-1], waypoints[1:]):
         if np.linalg.norm(end - start) < 1e-9:  # coincident waypoints -> a zero-length hold
             control_points.append(np.tile(start, (degree + 1, 1)))
             durations.append(1e-6)
             continue
-        updater = TrajectoryUpdater(
-            start,
-            end,
-            domain,
-            1,
-            limits,
-            degree=degree,
-            continuity_order=continuity_order,
-            terminal_order=terminal_order,
-            on_segment=on_segment,  # keep the warm start on the (collision-free) waypoint segment
-        )
+        if updater is None:
+            updater = TrajectoryUpdater(
+                start,
+                end,
+                domain,
+                1,
+                limits,
+                degree=degree,
+                continuity_order=continuity_order,
+                terminal_order=terminal_order,
+                on_segment=on_segment,  # keep the warm start on the (collision-free) segment
+            )
+        else:
+            updater.set_endpoints(start, end)
         curve, segment_time, _, _ = updater.solve({})
         control_points.append(curve.curves[0].points)
         durations.append(segment_time)
