@@ -1,6 +1,6 @@
 # PyBMTP: Biconvex Minimum-time Trajectory Planning Around Convex Obstacles
 
-[![arXiv](https://img.shields.io/badge/arXiv-coming--soon-b31b1b.svg)](https://arxiv.org/abs/XXXX.XXXXX)
+[![arXiv](https://img.shields.io/badge/arXiv-2608.02834-b31b1b.svg)](https://arxiv.org/abs/2608.02834)
 [![Website](https://img.shields.io/badge/website-bmtp-blue.svg)](https://wernerpe.github.io/bmtp-website/)
 [![CI](https://github.com/wernerpe/pybmtp/actions/workflows/ci.yml/badge.svg)](https://github.com/wernerpe/pybmtp/actions/workflows/ci.yml)
 [![Lint](https://github.com/wernerpe/pybmtp/actions/workflows/lint.yaml/badge.svg)](https://github.com/wernerpe/pybmtp/actions/workflows/lint.yaml)
@@ -106,10 +106,13 @@ If you use this software in your research, please cite the accompanying paper:
 
 ```bibtex
 @article{werner2026biconvex,
-  author  = {Werner, Peter and Marcucci, Tobia and Rus, Daniela},
-  title   = {Biconvex Optimization for Smooth Minimum-Time Trajectories around Convex Obstacles},
-  journal = {arXiv preprint},
-  year    = {2026},
+  author        = {Werner, Peter and Marcucci, Tobia and Rus, Daniela},
+  title         = {Biconvex Optimization for Smooth Minimum-Time Trajectories around Convex Obstacles},
+  journal       = {arXiv preprint arXiv:2608.02834},
+  year          = {2026},
+  eprint        = {2608.02834},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.RO},
 }
 ```
 
