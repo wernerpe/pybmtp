@@ -5,11 +5,7 @@
 [![CI](https://github.com/wernerpe/pybmtp/actions/workflows/ci.yml/badge.svg)](https://github.com/wernerpe/pybmtp/actions/workflows/ci.yml)
 [![Lint](https://github.com/wernerpe/pybmtp/actions/workflows/lint.yaml/badge.svg)](https://github.com/wernerpe/pybmtp/actions/workflows/lint.yaml)
 
-> [!WARNING]
-> **Under construction.** This repository is an active work in progress; the API,
-> layout, and contents may change without notice.
-
-Software accompanying the paper. More details to follow.
+Software accompanying [arXiv:2608.02834](https://arxiv.org/abs/2608.02834).
 
 `pybmtp` plans time-optimal Bezier trajectories that respect a velocity limit and,
 optionally, acceleration / jerk / snap limits while avoiding convex obstacles. The
